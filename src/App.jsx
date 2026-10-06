@@ -40,7 +40,7 @@ export default function App() {
   const [search, setSearch] = useState({ mapping: "", schedule: "", products: "" });
   const [mappingFilter, setMappingFilter] = useState("All");
   const [windowStart, setWindowStart] = useState(DEFAULT_WINDOW_START);
-  const [scheduleSub, setScheduleSub] = useState("household");
+  const [scheduleSub, setScheduleSub] = useState("unit");
   const dirtyRef = useRef(false);
   const [confirmState, setConfirmState] = useState(null);
   const confirm = useCallback((body, opts = {}) => new Promise((resolve) => setConfirmState({ open: true, body, ...opts, resolve })), []);
@@ -54,7 +54,7 @@ export default function App() {
     (message, action = null, duration = null) => setSnack((s) => ({ open: true, message, action, duration, n: s.n + 1 })),
     [],
   );
-  // A Household row being edited in the Schedule table: switching tabs, paging months, opening another row or closing asks first.
+  // A Unit row being edited in the Schedule table: switching tabs, paging months, opening another row or closing asks first.
   const rowEditRef = useRef({ dirty: false, cancel: () => {} });
   // A Schedule row left open while the user goes off to create a Mapping (and its unsaved choices) is restored when they come back.
   const resumeEditRef = useRef(null);
@@ -77,7 +77,7 @@ export default function App() {
       ? (db.changedMappings || []).length > 0
       : t === "products"
         ? (db.changedFamilies || []).length > 0
-        : (db.changedProjectRows || []).length + (db.changedHouseholds || []).length > 0;
+        : (db.changedActivityRows || []).length + (db.changedUnits || []).length > 0;
   useEffect(() => {
     const gone = (db.tabDots || []).filter((t) => !tabHasRowDots(t));
     if (open && gone.length) setDb((d) => ({ ...d, tabDots: d.tabDots.filter((t) => !gone.includes(t)) }));
@@ -91,7 +91,7 @@ export default function App() {
   useEffect(() => {
     if (!open) resumeEditRef.current = null;
   }, [open]);
-  // From the snackbar CTA: jump to Schedule on the Household or Project Type tab.
+  // From the snackbar CTA: jump to Schedule on the Unit or Activity Type tab.
   const openSchedule = useCallback((sub) => {
     setScheduleSub(sub);
     setTab("schedule");
@@ -214,7 +214,7 @@ export default function App() {
                   setSearch({ mapping: "", schedule: "", products: "" });
                   setMappingFilter("All");
                   setWindowStart(DEFAULT_WINDOW_START);
-                  setScheduleSub("household");
+                  setScheduleSub("unit");
                 }}
               >
                 {DATA_PRESETS.map((o) => (

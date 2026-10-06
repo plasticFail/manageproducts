@@ -14,7 +14,7 @@ Stack: React 18, MUI v6, AG Grid Community v33 (themeQuartz), Vite, JSX. Styling
 `constants.js` option lists and sizes · `data/initialDb.js` sample data and the db shape · `lib/domain.js` business rules (Fixed pool, pruning, tab dots, validation) · `lib/utils.js` small helpers · `theme/mpTheme.js` ALL tokens, MUI overrides, AG Grid params and global CSS · `theme/index.js` createTheme + grid theme · `components/` shared UI (PickerField multi-select, cells, previews, EditGrid, dialogs) · `mapping/` Mapping list + create/update form · `schedule/` Schedule grid, cells, month nav, legend · `products/` Product Family list, form, fields · `App.jsx` modal shell, tabs, db state.
 
 ## Terminology (UI text vs code)
-UI says **Unit / Type / Activity Type / Category**; code identifiers still use `household`, `cycle`, `projectType`, `personnel` (and sub-tab values `"household"` / `"project"`). Type values are O, T, X. Rename only user-visible strings. Phrases like "Mapped to Type O" are literal. Sample Category values: Category A–D.
+UI text and code use the same names: **Unit / Type / Activity Type / Category** (`unit`, `type`, `activityType`, `category`; sub-tab values `"unit"` / `"activity"`). Type values are O, T, X. Phrases like "Mapped to Type O" are literal. Sample Category values: Category A–D.
 
 ## Rules the prototype encodes
 - **Type O** Mapping: Activity Type + Categories, each Category links its own Product Families (`links`). Schedule "Activity Type" tab rows = Activity Type × Category pairs, months pick that pair's families.

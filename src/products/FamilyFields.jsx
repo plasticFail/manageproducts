@@ -123,7 +123,7 @@ export function CreateFamilyDialog({ ctx, onCancel, onSave }) {
   const initial = snap({ name: up(((ctx && ctx.prefill) || "").trim()), products: [""] });
   const changed = snap({ name: up(name.trim()), products: products.map((p) => up((p || "").trim())) }) !== initial;
   if (!ctx) return null;
-  const cta = ctx.personnel ? `Create and Map to ${ctx.personnel}` : "Create Product Family";
+  const cta = ctx.category ? `Create and Map to ${ctx.category}` : "Create Product Family";
   return (
     <Dialog
       open

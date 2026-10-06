@@ -4,8 +4,8 @@ import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import { IconButton } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
-import { cycleForFamily, scheduleUsage } from "../lib/domain";
-import { formatDate, isPersonnelCycle } from "../lib/utils";
+import { typeForFamily, scheduleUsage } from "../lib/domain";
+import { formatDate, isCategoryType } from "../lib/utils";
 
 export function mappingColumns(db, { withMeta, onEdit, onDelete }) {
   const cols = [];
@@ -22,9 +22,9 @@ export function mappingColumns(db, { withMeta, onEdit, onDelete }) {
     );
   }
   cols.push(
-    { field: "cycle", headerName: "Type", width: 100 },
+    { field: "type", headerName: "Type", width: 100 },
     { field: "code", headerName: "Code", width: 80, cellRenderer: (p) => p.value || <Dash /> },
-    { field: "projectType", headerName: "Activity Type", width: 150, cellRenderer: (p) => p.value || <Dash /> },
+    { field: "activityType", headerName: "Activity Type", width: 150, cellRenderer: (p) => p.value || <Dash /> },
     { colId: "families", headerName: "Product Family", flex: 1, minWidth: 200, cellRenderer: (p) => <FamilyCell db={db} m={p.data} /> },
   );
   if (withMeta) {
@@ -86,10 +86,10 @@ function ScrollPreviewGrid({ maxHeight = 300, ...props }) {
     </div>
   );
 }
-// "Cycle O, Project Type Alpha:" — parameter names in the input-label colour, values in text colour.
+// "Type O, Activity Type Alpha:" — parameter names in the input-label colour, values in text colour.
 export const mappingSummary = (m) =>
   [
-    ["Type", m.cycle],
+    ["Type", m.type],
     ["Code", m.code],
   ]
     .filter(([, v]) => v)
@@ -109,7 +109,7 @@ function scheduleForCols(rows, fallbackKind) {
   const dash = (p) => p.value || <Dash />;
   const kinds = new Set((rows || []).filter((r) => r.where).map((r) => r.kind));
   const kind = kinds.size === 1 ? [...kinds][0] : kinds.size === 0 ? fallbackKind : null;
-  const headerName = kind === "household" ? "Unit" : kind === "project" ? "Activity Type \u00B7 Category" : "For";
+  const headerName = kind === "unit" ? "Unit" : kind === "activity" ? "Activity Type \u00B7 Category" : "For";
   return [{ headerName, field: "where", width: 210, cellRenderer: dash }];
 }
 // Every delete / confirm table lists the columns it has in this order: Activity Type · Category (or Unit), Schedule, Product Family (Type and Code go in the sentence above).
@@ -127,7 +127,7 @@ function previewCols(cols) {
 // Delete Mapping: the Mapping's parameters in a sentence, then one row per Product Family × where it is scheduled.
 export function DeleteMappingPreview({ db, m, removed }) {
   const links = m.links || {};
-  const team = (f) => (isPersonnelCycle(m.cycle) ? (m.personnel || []).filter((p) => (links[p] || []).includes(f)).join(", ") : "");
+  const team = (f) => (isCategoryType(m.type) ? (m.category || []).filter((p) => (links[p] || []).includes(f)).join(", ") : "");
   const rows = m.families
     .flatMap((f) => {
       const u = removed.filter((x) => x.family === f);
@@ -148,11 +148,11 @@ export function DeleteMappingPreview({ db, m, removed }) {
           cellRenderer: (p) => (
             <span className="fam-with-team">
               {p.data.team ? <span className="fam-sched-team">{p.data.team}:</span> : null}
-              <FamilyTag name={p.value} cycle={m.cycle} />
+              <FamilyTag name={p.value} type={m.type} />
             </span>
           ),
         },
-        ...scheduleForCols(rows, m.cycle === "O" ? "project" : "household"),
+        ...scheduleForCols(rows, m.type === "O" ? "activity" : "unit"),
         { headerName: "Schedule", field: "when", cellRenderer: dash },
       ])}
       rowStyle={{ cursor: "default" }}
@@ -181,7 +181,7 @@ export function DeleteFamilyPreview({ db, name }) {
         rowData={rows}
         getRowId={(p) => String(p.data.id)}
         columnDefs={previewCols([
-          ...scheduleForCols(rows, mapped && mapped.cycle === "O" ? "project" : "household"),
+          ...scheduleForCols(rows, mapped && mapped.type === "O" ? "activity" : "unit"),
           { headerName: "Schedule", field: "when", cellRenderer: dash },
         ])}
         rowStyle={{ cursor: "default" }}
@@ -201,9 +201,9 @@ export function RemovedSchedulePreview({ db, rows }) {
         {
           headerName: "Product Family",
           field: "family",
-          cellRenderer: (p) => <FamilyTag name={p.value} cycle={cycleForFamily(db, p.value)} />,
+          cellRenderer: (p) => <FamilyTag name={p.value} type={typeForFamily(db, p.value)} />,
         },
-        ...scheduleForCols(rows, "household"),
+        ...scheduleForCols(rows, "unit"),
         { headerName: "Schedule", field: "when" },
       ])}
       rowStyle={{ cursor: "default" }}

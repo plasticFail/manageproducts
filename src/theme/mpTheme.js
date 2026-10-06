@@ -20,7 +20,7 @@
                  Custom Chip variants: tag (tables), cellTag (Schedule cells)
    3. AG GRID    params passed to AG Grid themeQuartz.withParams() for all tables.
    4. CSS        styles for app parts that aren't MUI/AG Grid components
-                 (dialog layout, count badge, legend, cycle tag colours …).
+                 (dialog layout, count badge, legend, type tag colours …).
    ========================================================================== */
 // Everything visual: tokens, MUI theme overrides, AG Grid params and the global CSS. Edit here to restyle.
 
@@ -70,7 +70,7 @@ const t = {
   disabled: "rgba(255,255,255,0.5)", // product: 50% (PRIZM disabled is 38%) — disabled text, icons, placeholders in disabled fields
   placeholder: "rgba(255,255,255,0.6)", // placeholder in enabled fields (kept above the 50% disabled level)
   arrow: "rgba(255,255,255,0.56)", // dropdown arrow (MUI action.active on dark)
-  chipInk: "rgba(0,0,0,0.87)", // text on filled cycle chips
+  chipInk: "rgba(0,0,0,0.87)", // text on filled type chips
   icon: "rgba(255,255,255,0.87)", // action icons, chevrons, clear ✕
   white: P.white, // prizm-white — text on destructive buttons
   // brand & status
@@ -85,16 +85,16 @@ const t = {
   destructiveDark: P.red800, // error-dark · red/800 — hover
   destructiveTint: "rgba(243,89,98,0.08)",
   countChip: "rgba(255,255,255,0.16)", // round count badge in multi-selects
-  // cycle colours (tags/chips) — nearest PRIZM palette steps
+  // type colours (tags/chips) — nearest PRIZM palette steps
   // filled chips with black text (chipInk); exploring blue / grey / amber
-  cycleO: P.blue200, // blue/200
-  cycleT: P.grey200, // grey/200
-  cycleX: P.amber300, // amber/300
+  typeO: P.blue200, // blue/200
+  typeT: P.grey200, // grey/200
+  typeX: P.amber300, // amber/300
   // schedule
-  rowEditing: P.cyan1000, // cyan/1000 — household row being edited inline
+  rowEditing: P.cyan1000, // cyan/1000 — unit row being edited inline
   allRow: "#283A3D", // product deviation: cyan 8% over grey/900 — pinned "All" row background
   allRowBorder: "rgba(0,220,255,0.5)", // primary-states-outlinedborder
-  highlight: "rgba(0,220,255,0.5)", // section highlight after "Schedule for All Households"
+  highlight: "rgba(0,220,255,0.5)", // section highlight after "Schedule for All Units"
   highlightGlow: "rgba(0,220,255,0.16)",
   // product table (AG Grid) — product styling, deviates from PRIZM base
   gridHeaderBg: P.grey900, // grey/900
@@ -648,7 +648,7 @@ const css = `
   .text-link{ background:none; border:0; padding:0; margin:0; font:inherit; color:#00DCFF; cursor:pointer; text-decoration:none; }
   .text-link:hover, .text-link:focus-visible{ text-decoration:underline; }
   .list-empty{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; background:${P.grey950}; border-radius:${t.radius}px; color:${t.text}; font-size:14px; }
-  /* Form empty state (e.g. Create Mapping before a Cycle is chosen): fills the rest of the body,
+  /* Form empty state (e.g. Create Mapping before a Type is chosen): fills the rest of the body,
      24px below the fields, ends 48px above the CTA, text centred both ways */
   .modal-body:has(> .form-empty){ display:flex; flex-direction:column; }
   .form-section.MuiFormControl-root:has(+ .form-empty){ margin-bottom:8px; } /* 16px field spacing + 8 = 24px */
@@ -656,12 +656,12 @@ const css = `
   .muted{ color:var(--muted); }
   .error{ color:var(--danger); font-size:12px; margin-top:6px; }
 
-  .tag-cycle-O{ background:${t.cycleO} !important; border-color:${t.cycleO} !important; color:${t.chipInk} !important; }
-  .tag-cycle-T{ background:${t.cycleT} !important; border-color:${t.cycleT} !important; color:${t.chipInk} !important; }
-  .tag-cycle-X{ background:${t.cycleX} !important; border-color:${t.cycleX} !important; color:${t.chipInk} !important; }
-  .tag-cycle-O .MuiChip-deleteIcon, .tag-cycle-T .MuiChip-deleteIcon, .tag-cycle-X .MuiChip-deleteIcon,
-  .tag-cycle-O .chip-x, .tag-cycle-T .chip-x, .tag-cycle-X .chip-x{ color:rgba(0,0,0,0.6) !important; }
-  .tag-cycle-O .chip-x:hover, .tag-cycle-T .chip-x:hover, .tag-cycle-X .chip-x:hover{ color:rgba(0,0,0,0.87) !important; }
+  .tag-type-O{ background:${t.typeO} !important; border-color:${t.typeO} !important; color:${t.chipInk} !important; }
+  .tag-type-T{ background:${t.typeT} !important; border-color:${t.typeT} !important; color:${t.chipInk} !important; }
+  .tag-type-X{ background:${t.typeX} !important; border-color:${t.typeX} !important; color:${t.chipInk} !important; }
+  .tag-type-O .MuiChip-deleteIcon, .tag-type-T .MuiChip-deleteIcon, .tag-type-X .MuiChip-deleteIcon,
+  .tag-type-O .chip-x, .tag-type-T .chip-x, .tag-type-X .chip-x{ color:rgba(0,0,0,0.6) !important; }
+  .tag-type-O .chip-x:hover, .tag-type-T .chip-x:hover, .tag-type-X .chip-x:hover{ color:rgba(0,0,0,0.87) !important; }
   .family-tags-wrap{ display:flex; flex-wrap:wrap; gap:4px; }
   .cell-tags{ display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-width:110px; }
   /* Schedule month cells: chips and dashes centred under the centred month header */
@@ -670,14 +670,14 @@ const css = `
   /* Month cells: one chip per line, centred, in every row (read and edit mode) */
   .ag-cell.month-cell .cell-tags{ flex-direction:column; align-items:center; }
   .ag-cell.month-cell .msf-tags.stack{ align-items:center; }
-  /* Empty "All" row: the whole row is the "Schedule for All Households" target.
+  /* Empty "All" row: the whole row is the "Schedule for All Units" target.
      Hovering the row or the button tints the row with the button's hover fill and shows the button's hover. */
   .ag-row.all-empty-row{ cursor:pointer; }
   .MuiDialog-paper .ag-cell .all-empty .MuiButton-root{ margin-top:-8px; margin-bottom:-8px; }
   .ag-row.all-empty-row.ag-row-hover, .ag-row.all-empty-row:hover{ background-image:linear-gradient(${t.accentHover}, ${t.accentHover}); }
   .ag-row.all-empty-row .all-empty .MuiButton-root, .ag-row.all-empty-row .all-empty .MuiButton-root:hover{ background:transparent; }
   .indefinite-chip{ cursor:pointer; }
-  /* Hovering any Indefinite chip highlights every Indefinite chip on that Household's row */
+  /* Hovering any Indefinite chip highlights every Indefinite chip on that Unit's row */
   .ag-row:has(.indefinite-chip:hover) .indefinite-chip{ box-shadow:0 0 0 2px ${P.grey00}; }
   .tab-label{ display:inline-flex; align-items:center; }
   .tab-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:#00DCFF; margin-left:8px; flex-shrink:0; }
@@ -770,17 +770,17 @@ const css = `
   .select-clear-inner{ background:transparent; border:none; color:${t.icon}; cursor:pointer; padding:2px; line-height:1; display:flex; }
   .select-clear-inner:hover{ color:var(--destructive); }
 
-  /* Schedule: All Households pinned row + legend */
+  /* Schedule: All Units pinned row + legend */
   /* The "All" row is an ordinary first row: normal banding, no special fill or border. */
-  .all-hh{ white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
-  .all-hh .MuiSvgIcon-root{ font-size:18px; }
+  .all-units{ white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+  .all-units .MuiSvgIcon-root{ font-size:18px; }
   .scope-chip .MuiChip-icon{ font-size:13px; margin:0 4px 0 0; color:inherit; }
   .sched-legend{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px; font-size:12px; color:var(--muted); }
   .sched-legend > span{ display:inline-flex; align-items:center; gap:4px; }
   .sched-legend .MuiSvgIcon-root{ font-size:14px; }
   .sched-legend-note{ flex-basis:100%; }
 
-  /* Schedule for All Households form */
+  /* Schedule for All Units form */
   .form-intro{ margin:0 0 20px; font-size:14px; color:var(--muted); line-height:1.5; max-width:70ch; }
   .section-help{ margin:0 0 12px; font-size:12px; color:var(--muted); }
   /* Repeating input rows leave room for a helper/error line under each field */
@@ -814,14 +814,14 @@ const css = `
   .modal-body .edit-grid{ margin-top:8px; } /* + 16px flex gap = 24px */
   .modal-body .section-help + .edit-grid{ margin-top:12px; } /* + 12px gap = 24px */
   .sched-grid.sizing{ visibility:hidden; }
-  /* Schedule tab: Household / Project Type tabs, then the half-year navigator directly under them */
+  /* Schedule tab: Unit / Activity Type tabs, then the half-year navigator directly under them */
   /* One toolbar line: tabs left, half-year stepper centred, Current month right. Whole-pixel height keeps the table on the pixel grid. */
   .sched-toolbar{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; box-sizing:border-box; height:64px; padding:16px 24px; }
   .sched-toolbar > :first-child{ justify-self:start; }
   .sched-toolbar > :last-child{ justify-self:end; margin-left:0; }
   .month-stepper{ display:flex; align-items:center; gap:8px; }
   .sched-toolbar .month-range{ line-height:24px; }
-  /* Schedule tables: column headers and row headers (Fixed) centred like the months; Household, Project Type and Personnel stay left-aligned */
+  /* Schedule tables: column headers and row headers (Fixed) centred like the months; Unit, Activity Type and Category stay left-aligned */
   .hdr-center .ag-header-cell-label{ justify-content:center; }
   /* A cell always holds at least one 24px line (chip height), so rows are 40px + multiples of 28px (all multiples of 4) */
   .sched-grid .ag-cell .cell-tags{ min-height:24px; }
@@ -844,9 +844,9 @@ const css = `
   .month-step .MuiSvgIcon-root{ font-size:20px; }
   .month-range{ font-size:16px; font-weight:600; line-height:22.4px; min-width:176px; text-align:center; }
   .month-navigator .MuiButton-root{ margin-left:8px; }
-  /* Schedule tab: All Households summary strip above the table */
-  .ah-strip{ cursor:default; display:grid; grid-template-columns:146px minmax(0,1fr) 90px; align-items:center; border:1px solid ${P.grey800}; border-bottom:0; border-radius:8px 8px 0 0; background:#1F1F1F; flex-shrink:0; } /* joined to the table; columns match Household | months | Actions */
-  .ah-strip-head{ padding:16px 0 16px 47px; position:relative; } /* "All" lines up with the Household text */
+  /* Schedule tab: All Units summary strip above the table */
+  .ah-strip{ cursor:default; display:grid; grid-template-columns:146px minmax(0,1fr) 90px; align-items:center; border:1px solid ${P.grey800}; border-bottom:0; border-radius:8px 8px 0 0; background:#1F1F1F; flex-shrink:0; } /* joined to the table; columns match Unit | months | Actions */
+  .ah-strip-head{ padding:16px 0 16px 47px; position:relative; } /* "All" lines up with the Unit text */
   .ah-strip-head .row-dot{ position:absolute; left:14px; top:50%; margin-top:-4px; } /* same spot as the table's changed-dot column */
   .ah-strip-title{ font-size:16px; font-weight:600; line-height:22.4px; display:flex; align-items:center; gap:8px; }
   .ah-groups{ display:flex; align-items:center; justify-content:center; gap:32px; padding:14px 16px; min-width:0; } /* centred over the month columns */

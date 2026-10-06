@@ -10,13 +10,13 @@ A modal with three tabs:
 
 ## What is prototype-only (replace with real services)
 - All data is in memory, from `src/data/initialDb.js`. No API, no persistence, no auth.
-- Units (`HOUSEHOLDS`), Activity Types, Categories and months come from `src/constants.js`; real lists come from the system.
+- Units (`UNITS`), Activity Types, Categories and months come from `src/constants.js`; real lists come from the system.
 - "Today" is fixed: the current month is hard-coded (`CURRENT_MONTH_KEY` in `src/lib/utils.js`, Sep 2026) and created/updated timestamps count from a fictional clock, so the screens are stable.
 - Row/tab dots are session state only.
 
 ## Data shape (`db`)
-`families[{name, products[], createdAt, updatedAt}]` · `mappings[{id, cycle, code, projectType, personnel[], links{category:[families]}, families[]}]` · `schedules[{household, key:"YYYY-M" (0-based month), family}]` · `projectSchedules[{projectType, personnel, key, family}]` · `fixed{household:[{kind:"family"|"product", name}]}` · `changedMappings/changedFamilies/changedHouseholds/changedProjectRows` (ids with a row dot) · `tabDots`.
-Naming note: code identifiers are the old names (`household`=Unit, `cycle`=Type, `projectType`=Activity Type, `personnel`=Category). Only UI text was renamed.
+`families[{name, products[], createdAt, updatedAt}]` · `mappings[{id, type, code, activityType, category[], links{category:[families]}, families[]}]` · `schedules[{unit, key:"YYYY-M" (0-based month), family}]` · `activitySchedules[{activityType, category, key, family}]` · `fixed{unit:[{kind:"family"|"product", name}]}` · `changedMappings/changedFamilies/changedUnits/changedActivityRows` (ids with a row dot) · `tabDots`.
+Naming: code identifiers match the UI (`unit`, `type`, `activityType`, `category`). Older builds used `household`, `cycle`, `projectType`, `personnel`.
 
 ## Business rules worth porting (all in `src/lib/domain.js`)
 - `fixedPool`: Fixed offers families not in Type O/T. Type X families are offered whole; unmapped families can also be broken into Products (family and products stay in sync).

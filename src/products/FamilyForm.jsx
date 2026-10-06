@@ -28,7 +28,7 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
     setErrors({});
     const now = nowStamp();
     setDb((d) => {
-      let { families, mappings, schedules, projectSchedules, fixed } = d;
+      let { families, mappings, schedules, activitySchedules, fixed } = d;
       if (editingName) {
         families = families.map((f) =>
           f.name === editingName ? { name: res.name, products: res.products, createdAt: f.createdAt, updatedAt: now } : f,
@@ -41,7 +41,7 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
             links: m.links ? Object.fromEntries(Object.entries(m.links).map(([p, arr]) => [p, arr.map(rename)])) : m.links,
           }));
           schedules = schedules.map((s) => ({ ...s, family: rename(s.family) }));
-          projectSchedules = projectSchedules.map((s) => ({ ...s, family: rename(s.family) }));
+          activitySchedules = activitySchedules.map((s) => ({ ...s, family: rename(s.family) }));
           fixed = Object.fromEntries(
             Object.entries(fixed).map(([h, arr]) => [h, arr.map((x) => (x.kind === "family" ? { ...x, name: rename(x.name) } : x))]),
           );
@@ -54,7 +54,7 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
           families,
           mappings,
           schedules,
-          projectSchedules,
+          activitySchedules,
           fixed,
           changedFamilies: withAdded(d.changedFamilies, res.name),
         }).db,

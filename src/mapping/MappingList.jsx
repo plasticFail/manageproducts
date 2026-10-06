@@ -9,13 +9,13 @@ export function MappingList({ search, filter, setFilter, onCreate, onEdit }) {
   const { db, setDb } = useDb();
   const { confirm, notify } = useUi();
   const rows = useMemo(() => {
-    const byCycle = filter === "All" ? db.mappings : db.mappings.filter((m) => m.cycle === filter);
+    const byType = filter === "All" ? db.mappings : db.mappings.filter((m) => m.type === filter);
     const term = search.trim().toLowerCase();
     const visible = term
-      ? byCycle.filter((m) =>
-          [m.cycle, m.code, m.projectType, ...(m.personnel || []), ...m.families].filter(Boolean).join(" ").toLowerCase().includes(term),
+      ? byType.filter((m) =>
+          [m.type, m.code, m.activityType, ...(m.category || []), ...m.families].filter(Boolean).join(" ").toLowerCase().includes(term),
         )
-      : byCycle;
+      : byType;
     return [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [db, filter, search]);
   async function onDelete(id) {
