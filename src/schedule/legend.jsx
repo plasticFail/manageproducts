@@ -8,17 +8,17 @@ function LegendRow({ sample, children }) {
     </>
   );
 }
-const SampleChip = ({ cycle, icon }) => (
-  <Chip variant="cellTag" label="FAMILY" icon={icon} className={`scope-chip ${cycle ? "tag-cycle-" + cycle : ""}`} />
+const SampleChip = ({ type, icon }) => (
+  <Chip variant="cellTag" label="FAMILY" icon={icon} className={`scope-chip ${type ? "tag-type-" + type : ""}`} />
 );
-function CycleLegendRows() {
+function TypeLegendRows() {
   return (
     <>
       <div className="legend-tip-title">How to Read</div>
       <div className="legend-grid">
-        <LegendRow sample={<SampleChip cycle="O" />}>Mapped to Type O</LegendRow>
-        <LegendRow sample={<SampleChip cycle="T" />}>Mapped to Type T</LegendRow>
-        <LegendRow sample={<SampleChip cycle="X" />}>Mapped to Type X</LegendRow>
+        <LegendRow sample={<SampleChip type="O" />}>Mapped to Type O</LegendRow>
+        <LegendRow sample={<SampleChip type="T" />}>Mapped to Type T</LegendRow>
+        <LegendRow sample={<SampleChip type="X" />}>Mapped to Type X</LegendRow>
       </div>
     </>
   );
@@ -26,7 +26,7 @@ function CycleLegendRows() {
 export function MappingLegend() {
   return (
     <div className="legend-tip">
-      <CycleLegendRows />
+      <TypeLegendRows />
     </div>
   );
 }
@@ -36,9 +36,9 @@ export function ScheduleLegend() {
     <div className="legend-tip">
       <div className="legend-tip-title">How to Read</div>
       <div className="legend-grid">
-        {row(<SampleChip cycle="O" />, "Mapped to Type O")}
-        {row(<SampleChip cycle="T" />, "Mapped to Type T")}
-        {row(<SampleChip cycle="X" />, "Mapped to Type X")}
+        {row(<SampleChip type="O" />, "Mapped to Type O")}
+        {row(<SampleChip type="T" />, "Mapped to Type T")}
+        {row(<SampleChip type="X" />, "Mapped to Type X")}
         {row(<SampleChip />, "Not mapped")}
         {row(<span className="plain-item">PRODUCT</span>, "Product")}
       </div>

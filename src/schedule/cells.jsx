@@ -4,14 +4,14 @@ import { IconButton } from "@mui/material";
 import { PickerField } from "../components/PickerField";
 import Save from "@mui/icons-material/Save";
 import { createContext, useContext } from "react";
-import { cycleForFamily } from "../lib/domain";
+import { typeForFamily } from "../lib/domain";
 import { productTextList } from "../lib/utils";
 
 export const ScheduleCtx = createContext(null);
 const safeId = (s) => String(s).replace(/[^A-Za-z0-9]+/g, "-");
-const cellCycleClass = (db, f) => {
-  const c = cycleForFamily(db, f);
-  return c ? `tag-cycle-${c}` : "";
+const cellTypeClass = (db, f) => {
+  const c = typeForFamily(db, f);
+  return c ? `tag-type-${c}` : "";
 };
 // Fixed column content: a Product Family is a chip, a Product is plain text.
 function FixedItems({ db, items }) {
@@ -26,7 +26,7 @@ function FixedItems({ db, items }) {
     <div className="cell-tags fixed-tags">
       {sorted.map((it) =>
         it.kind === "family" ? (
-          <FamilyTag key={"f" + it.name} name={it.name} variant="cellTag" cycle={cycleForFamily(db, it.name)} />
+          <FamilyTag key={"f" + it.name} name={it.name} variant="cellTag" type={typeForFamily(db, it.name)} />
         ) : (
           <span key={"p" + it.name} className="plain-item" title="Product">
             {it.name}
@@ -42,7 +42,7 @@ export function ScheduleMonthCell(params) {
   const key = params.colDef.field;
   const row = params.data;
   if (ctx.editing === row.rowId && ctx.noFamilies) {
-    // No Cycle T Mapping yet: the first month cell spans all six months with one message and the rest stay empty.
+    // No Type T Mapping yet: the first month cell spans all six months with one message and the rest stay empty.
     if (key !== ctx.firstMonthKey) return null;
     return (
       <div className="span-empty">
@@ -70,9 +70,9 @@ export function ScheduleMonthCell(params) {
         onToggle={(f) => ctx.toggleDraft(key, f)}
         onClear={() => ctx.clearDraft(key)}
         onCommit={ctx.commitDraft}
-        getSub={(f) => `Type ${cycleForFamily(db, f)}`}
+        getSub={(f) => `Type ${typeForFamily(db, f)}`}
         getDetail={(f) => productTextList((db.families.find((x) => x.name === f) || { products: [] }).products)}
-        chipClass={(f) => cellCycleClass(db, f)}
+        chipClass={(f) => cellTypeClass(db, f)}
       />
     );
   }
@@ -86,7 +86,7 @@ export function ScheduleMonthCell(params) {
   return (
     <div className="cell-tags">
       {fams.map((f) => (
-        <FamilyTag key={f} name={f} variant="cellTag" cycle={cycleForFamily(db, f)} />
+        <FamilyTag key={f} name={f} variant="cellTag" type={typeForFamily(db, f)} />
       ))}
     </div>
   );
@@ -115,17 +115,17 @@ export function ScheduleFixedCell(params) {
         onCommit={ctx.commitDraft}
         getSub={(n) => {
           if (ctx.fixedKind(n) !== "family") return "";
-          const c = cycleForFamily(db, n);
+          const c = typeForFamily(db, n);
           if (!c) return "";
-          const m = db.mappings.find((x) => x.cycle === c && x.families.includes(n));
+          const m = db.mappings.find((x) => x.type === c && x.families.includes(n));
           return m && m.code ? `Type ${c} · ${m.code}` : `Type ${c}`; // a Mapping with a Code shows it, e.g. Type X · PREP
         }}
         getDetail={(n) =>
-          ctx.fixedKind(n) === "family" && cycleForFamily(db, n)
+          ctx.fixedKind(n) === "family" && typeForFamily(db, n)
             ? productTextList((db.families.find((x) => x.name === n) || { products: [] }).products)
             : ""
         } // Type X families list their Products like the month options do
-        chipClass={(n) => (ctx.fixedKind(n) === "family" ? cellCycleClass(db, n) : "")}
+        chipClass={(n) => (ctx.fixedKind(n) === "family" ? cellTypeClass(db, n) : "")}
       />
     );
   }

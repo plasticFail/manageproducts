@@ -4,7 +4,7 @@ import { DeleteFamilyPreview, UndoNote } from "../components/previews";
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import { useMemo } from "react";
-import { formatDate, isPersonnelCycle, productTextList, without } from "../lib/utils";
+import { formatDate, isCategoryType, productTextList, without } from "../lib/utils";
 import { pruneSchedule, scheduleUsage } from "../lib/domain";
 
 export function ProductsList({ search, onCreate, onEdit }) {
@@ -48,10 +48,10 @@ export function ProductsList({ search, onCreate, onEdit }) {
     setDb((d) => {
       let mappings = d.mappings.map((m) => {
         if (!m.families.includes(name)) return m;
-        if (!isPersonnelCycle(m.cycle)) return { ...m, families: without(m.families, name) };
+        if (!isCategoryType(m.type)) return { ...m, families: without(m.families, name) };
         const linked = Object.fromEntries(Object.entries(m.links || {}).map(([p, arr]) => [p, without(arr, name)]));
-        const personnel = (m.personnel || []).filter((p) => (linked[p] || []).length > 0);
-        return { ...m, personnel, links: Object.fromEntries(personnel.map((p) => [p, linked[p]])), families: without(m.families, name) };
+        const category = (m.category || []).filter((p) => (linked[p] || []).length > 0);
+        return { ...m, category, links: Object.fromEntries(category.map((p) => [p, linked[p]])), families: without(m.families, name) };
       });
       const emptied = mappings.filter((m) => m.families.length === 0).map((m) => m.id);
       mappings = mappings.filter((m) => m.families.length > 0);

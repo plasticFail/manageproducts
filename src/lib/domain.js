@@ -1,9 +1,9 @@
-import { MONTH_NAMES, NOT_SCHEDULED_CODES, PERSONNEL_LIST, PROJECT_TYPES } from "../constants";
+import { MONTH_NAMES, NOT_SCHEDULED_CODES, CATEGORY_LIST, ACTIVITY_TYPES } from "../constants";
 import { up } from "./utils";
 
-export function cycleForFamily(db, name) {
+export function typeForFamily(db, name) {
   const m = db.mappings.find((mm) => mm.families.includes(name));
-  return m ? m.cycle : null;
+  return m ? m.type : null;
 }
 const keyLabel = (k) => {
   const [y, mo] = k.split("-").map(Number);
@@ -16,21 +16,21 @@ const sortKeys = (keys) =>
     return ya - yb || ma - mb;
   });
 const familiesFor = (db, pred) => [...new Set(db.mappings.filter(pred).flatMap((m) => m.families))].sort((a, b) => a.localeCompare(b));
-// Household tab, month cells: Cycle T Product Families only.
-export const householdCellFamilies = (db) => familiesFor(db, (m) => m.cycle === "T");
+// Unit tab, month cells: Type T Product Families only.
+export const unitCellFamilies = (db) => familiesFor(db, (m) => m.type === "T");
 export const pairLabel = (pt, p) => `${pt} · ${p}`;
-export const projectRowId = (pt, p) => `${pt}|${p}`;
-// Project Type tab rows: one per Project Type + Personnel pair in a Cycle O Mapping. A pair appears as soon as its Mapping exists.
-export function projectRows(db) {
+export const activityRowId = (pt, p) => `${pt}|${p}`;
+// Activity Type tab rows: one per Activity Type + Category pair in a Type O Mapping. A pair appears as soon as its Mapping exists.
+export function activityRows(db) {
   const rows = [];
   db.mappings
-    .filter((m) => m.cycle === "O")
+    .filter((m) => m.type === "O")
     .forEach((m) =>
-      (m.personnel || []).forEach((p) =>
+      (m.category || []).forEach((p) =>
         rows.push({
-          rowId: projectRowId(m.projectType, p),
-          projectType: m.projectType,
-          personnel: p,
+          rowId: activityRowId(m.activityType, p),
+          activityType: m.activityType,
+          category: p,
           families: [...((m.links || {})[p] || [])],
           mappingId: m.id,
         }),
@@ -38,16 +38,16 @@ export function projectRows(db) {
     );
   return rows.sort(
     (a, b) =>
-      PROJECT_TYPES.indexOf(a.projectType) - PROJECT_TYPES.indexOf(b.projectType) ||
-      PERSONNEL_LIST.indexOf(a.personnel) - PERSONNEL_LIST.indexOf(b.personnel),
+      ACTIVITY_TYPES.indexOf(a.activityType) - ACTIVITY_TYPES.indexOf(b.activityType) ||
+      CATEGORY_LIST.indexOf(a.category) - CATEGORY_LIST.indexOf(b.category),
   );
 }
-// Household tab, Fixed column: Type X Product Families (whole only) and unmapped Product Families with their Products; never Type O, T or Type X with Code PREP.
+// Unit tab, Fixed column: Type X Product Families (whole only) and unmapped Product Families with their Products; never Type O, T or Type X with Code PREP.
 export function fixedPool(db) {
   // Type O and T families are scheduled elsewhere; Type X families with a hidden Code (PREP) are not scheduled at all.
   const taken = new Set(
     db.mappings
-      .filter((m) => m.cycle === "O" || m.cycle === "T" || (m.cycle === "X" && NOT_SCHEDULED_CODES.includes(m.code)))
+      .filter((m) => m.type === "O" || m.type === "T" || (m.type === "X" && NOT_SCHEDULED_CODES.includes(m.code)))
       .flatMap((m) => m.families),
   );
   const fams = db.families.filter((f) => !taken.has(f.name));
@@ -63,7 +63,7 @@ export function fixedPool(db) {
       .sort((a, b) => byName(a.name, b.name)),
   };
 }
-// Where each of these Product Families is scheduled: [{ family, where: "Household 123A" | "Alpha · Team 1", when: "Sep 2026, Nov 2026" | "Fixed" }, …]
+// Where each of these Product Families is scheduled: [{ family, where: "Unit 123A" | "Alpha · Team 1", when: "Sep 2026, Nov 2026" | "Fixed" }, …]
 export function scheduleUsage(db, families) {
   const out = [];
   const group = (rows, keyOf) => {
@@ -74,39 +74,39 @@ export function scheduleUsage(db, families) {
   families.forEach((f) => {
     const byHh = group(
       db.schedules.filter((s) => s.family === f),
-      (s) => s.household,
+      (s) => s.unit,
     );
     Object.keys(byHh)
       .sort()
-      .forEach((w) => out.push({ family: f, kind: "household", where: w, when: sortKeys(byHh[w]).map(keyLabel).join(", ") }));
+      .forEach((w) => out.push({ family: f, kind: "unit", where: w, when: sortKeys(byHh[w]).map(keyLabel).join(", ") }));
     const byRow = group(
-      db.projectSchedules.filter((s) => s.family === f),
-      (s) => pairLabel(s.projectType, s.personnel),
+      db.activitySchedules.filter((s) => s.family === f),
+      (s) => pairLabel(s.activityType, s.category),
     );
     Object.keys(byRow)
       .sort()
-      .forEach((w) => out.push({ family: f, kind: "project", where: w, when: sortKeys(byRow[w]).map(keyLabel).join(", ") }));
+      .forEach((w) => out.push({ family: f, kind: "activity", where: w, when: sortKeys(byRow[w]).map(keyLabel).join(", ") }));
     const fam = db.families.find((x) => x.name === f);
     Object.keys(db.fixed)
       .sort()
       .forEach((h) =>
         (db.fixed[h] || []).forEach((x) => {
-          if (x.kind === "family" && x.name === f) out.push({ family: f, kind: "household", where: h, when: "Fixed" });
+          if (x.kind === "family" && x.name === f) out.push({ family: f, kind: "unit", where: h, when: "Fixed" });
           else if (x.kind === "product" && fam && fam.products.includes(x.name))
-            out.push({ family: f, kind: "household", where: h, when: `Fixed · ${x.name}` });
+            out.push({ family: f, kind: "unit", where: h, when: `Fixed · ${x.name}` });
         }),
       );
   });
   return out;
 }
 // After a Mapping or Product Family change, Schedule entries that no longer fit are removed:
-// Household months need Cycle T; Project Type months need the Product Family linked to that Project Type + Personnel (Cycle O);
-// Fixed needs a Product Family or Product that is not mapped to Cycle O or T.
+// Unit months need Type T; Activity Type months need the Product Family linked to that Activity Type + Category (Type O);
+// Fixed needs a Product Family or Product that is not mapped to Type O or T.
 // Returns the pruned db and the removed entries as preview rows { family, where, when }.
 export function pruneSchedule(d) {
   const removed = [];
-  const tFams = householdCellFamilies(d);
-  const pRows = projectRows(d);
+  const tFams = unitCellFamilies(d);
+  const aRows = activityRows(d);
   const grouped = {};
   const note = (family, kind, where, key) =>
     (grouped[family + "|" + kind + "|" + where] = grouped[family + "|" + kind + "|" + where] || {
@@ -115,11 +115,11 @@ export function pruneSchedule(d) {
       where,
       keys: [],
     }).keys.push(key);
-  const schedules = d.schedules.filter((x) => tFams.includes(x.family) || (note(x.family, "household", x.household, x.key), false));
-  const projectSchedules = d.projectSchedules.filter(
+  const schedules = d.schedules.filter((x) => tFams.includes(x.family) || (note(x.family, "unit", x.unit, x.key), false));
+  const activitySchedules = d.activitySchedules.filter(
     (x) =>
-      pRows.some((r) => r.rowId === projectRowId(x.projectType, x.personnel) && r.families.includes(x.family)) ||
-      (note(x.family, "project", pairLabel(x.projectType, x.personnel), x.key), false),
+      aRows.some((r) => r.rowId === activityRowId(x.activityType, x.category) && r.families.includes(x.family)) ||
+      (note(x.family, "activity", pairLabel(x.activityType, x.category), x.key), false),
   );
   Object.keys(grouped)
     .sort()
@@ -139,13 +139,13 @@ export function pruneSchedule(d) {
             : pool.products.some((p) => p.name === x.name && !pool.whole.includes(p.family));
         if (!ok) {
           const owner = x.kind === "family" ? x.name : (d.families.find((f) => f.products.includes(x.name)) || {}).name || x.name;
-          removed.push({ family: owner, kind: "household", where: h, when: x.kind === "family" ? "Fixed" : `Fixed · ${x.name}` });
+          removed.push({ family: owner, kind: "unit", where: h, when: x.kind === "family" ? "Fixed" : `Fixed · ${x.name}` });
         }
         return ok;
       });
       if (keep.length) fixed[h] = keep;
     });
-  return { db: removed.length ? { ...d, schedules, projectSchedules, fixed } : d, removed };
+  return { db: removed.length ? { ...d, schedules, activitySchedules, fixed } : d, removed };
 }
 function familyUsage(db, name) {
   return db.mappings.some((m) => m.families.includes(name)) || scheduleUsage(db, [name]).length > 0;
@@ -158,7 +158,7 @@ export function withTabDots(before, after, fromTab) {
   const dots = new Set(after.tabDots || []);
   if (grew("changedMappings")) dots.add("mapping");
   if (grew("changedFamilies")) dots.add("products");
-  if (grew("changedProjectRows") || grew("changedHouseholds")) dots.add("schedule");
+  if (grew("changedActivityRows") || grew("changedUnits")) dots.add("schedule");
   dots.delete(fromTab);
   return { ...after, tabDots: [...dots] };
 }

@@ -23,7 +23,7 @@ export function MonthHeader({ displayName, current, onPrev, onNext, prevLabel, n
 }
 const monthName = (k) => MONTH_NAMES[Number(k.split("-")[1])];
 const yearOf = (k) => k.split("-")[0];
-// Schedule tab: a half-year (6 months) at a time, Jan – Jun or Jul – Dec. The navigator sits under the Household / Project Type tabs and is shared by both.
+// Schedule tab: a half-year (6 months) at a time, Jan – Jun or Jul – Dec. The navigator sits under the Unit / Activity Type tabs and is shared by both.
 // "Current month" is enabled only while the current month is out of view; it returns to the current half-year.
 export const DEFAULT_WINDOW_START = 30;
 // Jul 2026 (offset in months from Jan 2024); always a multiple of 6

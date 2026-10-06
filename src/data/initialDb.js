@@ -65,18 +65,18 @@ export function initialDb(preset = "full") {
   if (preset === "blank") return { ...initialDb("empty"), families: [] };
   if (preset === "empty") {
     const d = initialDb("full");
-    return { ...d, mappings: [], nextMappingId: 1, schedules: [], projectSchedules: [], fixed: {} };
+    return { ...d, mappings: [], nextMappingId: 1, schedules: [], activitySchedules: [], fixed: {} };
   }
   return {
     families: SEED_FAMILIES.map(([name, products, at]) => ({ name: up(name), products: products.map(up), createdAt: at, updatedAt: at })),
-    // A Cycle O Mapping keeps its own Product Family links per Personnel (links), so the same Personnel can sit in several Project Types independently.
+    // A Type O Mapping keeps its own Product Family links per Category (links), so the same Category can sit in several Activity Types independently.
     mappings: [
       {
         id: 1,
-        cycle: "O",
+        type: "O",
         code: null,
-        projectType: "Alpha",
-        personnel: ["Category A", "Category B"],
+        activityType: "Alpha",
+        category: ["Category A", "Category B"],
         links: { "Category A": ["FRUIT"], "Category B": ["GADGETS"] },
         families: ["FRUIT", "GADGETS"],
         createdAt: "2026-09-01T09:00:00",
@@ -84,10 +84,10 @@ export function initialDb(preset = "full") {
       },
       {
         id: 2,
-        cycle: "T",
+        type: "T",
         code: null,
-        projectType: null,
-        personnel: null,
+        activityType: null,
+        category: null,
         links: null,
         families: ["MACHINES", "WRITING"],
         createdAt: "2026-09-05T10:30:00",
@@ -95,10 +95,10 @@ export function initialDb(preset = "full") {
       },
       {
         id: 3,
-        cycle: "X",
+        type: "X",
         code: "PREP",
-        projectType: null,
-        personnel: null,
+        activityType: null,
+        category: null,
         links: null,
         families: ["PREP KIT"],
         createdAt: "2026-09-10T08:15:00",
@@ -106,10 +106,10 @@ export function initialDb(preset = "full") {
       },
       {
         id: 4,
-        cycle: "X",
+        type: "X",
         code: null,
-        projectType: null,
-        personnel: null,
+        activityType: null,
+        category: null,
         links: null,
         families: ["TOYS", "SPORTS", "BOOKS"],
         createdAt: "2026-09-12T11:00:00",
@@ -117,10 +117,10 @@ export function initialDb(preset = "full") {
       },
       {
         id: 5,
-        cycle: "O",
+        type: "O",
         code: null,
-        projectType: "Bravo",
-        personnel: ["Category A", "Category C"],
+        activityType: "Bravo",
+        category: ["Category A", "Category C"],
         links: { "Category A": ["FOOD"], "Category C": ["BEAUTY"] },
         families: ["FOOD", "BEAUTY"],
         createdAt: "2026-09-14T09:00:00",
@@ -128,29 +128,29 @@ export function initialDb(preset = "full") {
       },
     ],
     nextMappingId: 6,
-    // Household schedule: Cycle T Product Family per Household per month. key = "YYYY-M" (0-based month)
+    // Unit schedule: Type T Product Family per Unit per month. key = "YYYY-M" (0-based month)
     schedules: [
-      { household: "123A", key: "2026-8", family: "MACHINES" },
-      { household: "456B", key: "2026-9", family: "WRITING" },
-      { household: "789C", key: "2026-10", family: "MACHINES" },
+      { unit: "123A", key: "2026-8", family: "MACHINES" },
+      { unit: "456B", key: "2026-9", family: "WRITING" },
+      { unit: "789C", key: "2026-10", family: "MACHINES" },
     ],
-    // Project Type schedule: Cycle O Product Families per Project Type + Personnel per month (one or more per month)
-    projectSchedules: [
-      { projectType: "Alpha", personnel: "Category A", key: "2026-8", family: "FRUIT" },
-      { projectType: "Alpha", personnel: "Category B", key: "2026-8", family: "GADGETS" },
-      { projectType: "Alpha", personnel: "Category B", key: "2026-9", family: "GADGETS" },
-      { projectType: "Bravo", personnel: "Category A", key: "2026-10", family: "FOOD" },
+    // Activity Type schedule: Type O Product Families per Activity Type + Category per month (one or more per month)
+    activitySchedules: [
+      { activityType: "Alpha", category: "Category A", key: "2026-8", family: "FRUIT" },
+      { activityType: "Alpha", category: "Category B", key: "2026-8", family: "GADGETS" },
+      { activityType: "Alpha", category: "Category B", key: "2026-9", family: "GADGETS" },
+      { activityType: "Bravo", category: "Category A", key: "2026-10", family: "FOOD" },
     ],
-    // Fixed per Household (does not vary by month): a Product Family (chip) or a Product (plain text) that is not mapped to Cycle O or T.
+    // Fixed per Unit (does not vary by month): a Product Family (chip) or a Product (plain text) that is not mapped to Type O or T.
     fixed: {
       "123A": [{ kind: "product", name: "HAMMER" }],
       "456B": [{ kind: "family", name: "CLOTHES" }],
     },
-    hiddenHouseholds: [],
+    hiddenUnits: [],
     changedMappings: [],
     changedFamilies: [],
-    changedHouseholds: [],
-    changedProjectRows: [],
+    changedUnits: [],
+    changedActivityRows: [],
     tabDots: [],
   };
 }

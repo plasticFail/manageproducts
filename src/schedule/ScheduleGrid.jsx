@@ -2,15 +2,15 @@ import { Button, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { CURRENT_MONTH_KEY, monthAt, toggle, withAdded, without } from "../lib/utils";
 import { DEFAULT_WINDOW_START, MonthHeader, MonthStepper } from "./MonthNav";
 import { DataGrid, useDb, useUi } from "../components/common";
-import { HOUSEHOLDS, VISIBLE_MONTHS } from "../constants";
+import { UNITS, VISIBLE_MONTHS } from "../constants";
 import { useEffect, useRef, useState } from "react";
 import { ScheduleActionsCell, ScheduleCtx, ScheduleFixedCell, ScheduleMonthCell } from "./cells";
-import { fixedPool, householdCellFamilies, pairLabel, projectRowId, projectRows } from "../lib/domain";
+import { fixedPool, unitCellFamilies, pairLabel, activityRowId, activityRows } from "../lib/domain";
 
 export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub }) {
   const { db, setDb } = useDb();
   const { notify, guardRowEdit, rowEditRef, openCreateMapping, resumeEditRef } = useUi();
-  const isHh = sub === "household";
+  const isUnit = sub === "unit";
   // Coming back from Create Mapping (started from this row): the row reopens with its unsaved choices.
   const resume = useRef(resumeEditRef.current && resumeEditRef.current.sub === sub ? resumeEditRef.current : null).current;
   const [editing, setEditing] = useState(resume ? resume.rowId : null);
@@ -32,17 +32,17 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     return () => clearTimeout(t);
   }, [sub]);
   const months = Array.from({ length: VISIBLE_MONTHS }, (_, i) => monthAt(windowStart + i));
-  const tFamilies = householdCellFamilies(db);
-  const pRows = projectRows(db);
+  const tFamilies = unitCellFamilies(db);
+  const aRows = activityRows(db);
   const pool = fixedPool(db);
   const fixedOptions = pool.families.flatMap((f) => [f, ...pool.products.filter((p) => p.family === f).map((p) => p.name)]); // each Product Family followed by its own Products
   const productsOf = (fam) => pool.products.filter((p) => p.family === fam).map((p) => p.name);
   const fixedFamilyOf = (n) => (pool.products.find((p) => p.name === n) || {}).family || "";
   const fixedKind = (n) => (pool.families.includes(n) ? "family" : "product");
   const savedFor = (rowId, key) =>
-    isHh
-      ? db.schedules.filter((s) => s.household === rowId && s.key === key).map((s) => s.family)
-      : db.projectSchedules.filter((s) => projectRowId(s.projectType, s.personnel) === rowId && s.key === key).map((s) => s.family);
+    isUnit
+      ? db.schedules.filter((s) => s.unit === rowId && s.key === key).map((s) => s.family)
+      : db.activitySchedules.filter((s) => activityRowId(s.activityType, s.category) === rowId && s.key === key).map((s) => s.family);
   const initialDraftFor = (rowId, key) => (key === "__fixed" ? (db.fixed[rowId] || []).map((x) => x.name) : savedFor(rowId, key));
   const getDraft = (key) => draft[key] ?? initialDraftFor(editing, key);
   const resetEdit = () => {
@@ -66,14 +66,14 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     getDraft,
     getSaved: savedFor,
     getSavedFixed: (rowId) => db.fixed[rowId] || [],
-    noFamilies: isHh && tFamilies.length === 0,
+    noFamilies: isUnit && tFamilies.length === 0,
     firstMonthKey: months[0].key,
     createT: () => {
       resumeEditRef.current = { sub, rowId: editing, draft: draftRef.current, committed };
-      openCreateMapping({ cycle: "T", fromSchedule: true });
+      openCreateMapping({ type: "T", fromSchedule: true });
     },
-    optionsFor: (row) => (isHh ? tFamilies : [...(row.families || [])].sort((a, b) => a.localeCompare(b))),
-    emptyText: isHh ? "No Product Family is mapped to Type T yet." : "No Product Family is mapped to this Activity Type and Category.",
+    optionsFor: (row) => (isUnit ? tFamilies : [...(row.families || [])].sort((a, b) => a.localeCompare(b))),
+    emptyText: isUnit ? "No Product Family is mapped to Type T yet." : "No Product Family is mapped to this Activity Type and Category.",
     fixedOptions,
     fixedKind,
     fixedFamilyOf,
@@ -116,29 +116,29 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
       const id = row.rowId;
       const keys = [...new Set([...months.map((mo) => mo.key), ...Object.keys(draft).filter((k) => k !== "__fixed")])];
       setDb((d) => {
-        if (isHh) {
-          const schedules = d.schedules.filter((s) => !(s.household === id && keys.includes(s.key)));
-          keys.forEach((key) => (draft[key] ?? initialDraftFor(id, key)).forEach((f) => schedules.push({ household: id, key, family: f })));
+        if (isUnit) {
+          const schedules = d.schedules.filter((s) => !(s.unit === id && keys.includes(s.key)));
+          keys.forEach((key) => (draft[key] ?? initialDraftFor(id, key)).forEach((f) => schedules.push({ unit: id, key, family: f })));
           const fixed = { ...d.fixed };
           if (draft.__fixed) {
             const items = draft.__fixed.map((n) => ({ kind: fixedKind(n), name: n }));
             if (items.length) fixed[id] = items;
             else delete fixed[id];
           }
-          return { ...d, schedules, fixed, changedHouseholds: withAdded(d.changedHouseholds, id) };
+          return { ...d, schedules, fixed, changedUnits: withAdded(d.changedUnits, id) };
         }
-        const projectSchedules = d.projectSchedules.filter(
-          (s) => !(projectRowId(s.projectType, s.personnel) === id && keys.includes(s.key)),
+        const activitySchedules = d.activitySchedules.filter(
+          (s) => !(activityRowId(s.activityType, s.category) === id && keys.includes(s.key)),
         );
         keys.forEach((key) =>
           (draft[key] ?? initialDraftFor(id, key)).forEach((f) =>
-            projectSchedules.push({ projectType: row.projectType, personnel: row.personnel, key, family: f }),
+            activitySchedules.push({ activityType: row.activityType, category: row.category, key, family: f }),
           ),
         );
-        return { ...d, projectSchedules, changedProjectRows: withAdded(d.changedProjectRows, id) };
+        return { ...d, activitySchedules, changedActivityRows: withAdded(d.changedActivityRows, id) };
       });
       resetEdit();
-      notify(`Schedule updated for ${isHh ? id : pairLabel(row.projectType, row.personnel)}`);
+      notify(`Schedule updated for ${isUnit ? id : pairLabel(row.activityType, row.category)}`);
     },
   };
   // Tell the app whether this row has unsaved changes, so leaving can ask first.
@@ -160,19 +160,19 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     changed: changedList.includes(id),
     rev: Math.random(),
   });
-  const rows = isHh
-    ? HOUSEHOLDS.filter((h) => !db.hiddenHouseholds.includes(h))
+  const rows = isUnit
+    ? UNITS.filter((h) => !db.hiddenUnits.includes(h))
         .filter(
           (h) =>
             !term ||
             h.toLowerCase().includes(term) ||
-            db.schedules.some((s) => s.household === h && s.family.toLowerCase().includes(term)) ||
+            db.schedules.some((s) => s.unit === h && s.family.toLowerCase().includes(term)) ||
             (db.fixed[h] || []).some((x) => x.name.toLowerCase().includes(term)),
         )
-        .map((h) => ({ rowId: h, household: h, ...rowFlags(h, db.changedHouseholds) }))
-    : pRows
-        .filter((r) => !term || [r.projectType, r.personnel, ...r.families].join(" ").toLowerCase().includes(term))
-        .map((r) => ({ ...r, ...rowFlags(r.rowId, db.changedProjectRows) }));
+        .map((h) => ({ rowId: h, unit: h, ...rowFlags(h, db.changedUnits) }))
+    : aRows
+        .filter((r) => !term || [r.activityType, r.category, ...r.families].join(" ").toLowerCase().includes(term))
+        .map((r) => ({ ...r, ...rowFlags(r.rowId, db.changedActivityRows) }));
   const noResults = !!term && rows.length === 0;
   const dotCol = {
     colId: "dot",
@@ -182,10 +182,10 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     cellStyle: { textAlign: "center" },
     cellRenderer: (p) => (p.data.changed ? <span className="row-dot" /> : null),
   };
-  const labelCols = isHh
+  const labelCols = isUnit
     ? [
         dotCol,
-        { field: "household", headerName: "Unit", width: 100, pinned: "left" },
+        { field: "unit", headerName: "Unit", width: 100, pinned: "left" },
         {
           colId: "fixed",
           headerName: "Fixed",
@@ -200,14 +200,14 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
       ]
     : [
         dotCol,
-        { field: "projectType", headerName: "Activity Type", width: 160, pinned: "left" },
-        { field: "personnel", headerName: "Category", width: 160, pinned: "left" },
+        { field: "activityType", headerName: "Activity Type", width: 160, pinned: "left" },
+        { field: "category", headerName: "Category", width: 160, pinned: "left" },
       ];
   const columnDefs = [
     ...labelCols,
     ...months.map((mo, mi) => ({
       field: mo.key,
-      colSpan: mi === 0 ? (p) => (isHh && tFamilies.length === 0 && p.data && p.data.editing ? VISIBLE_MONTHS : 1) : undefined,
+      colSpan: mi === 0 ? (p) => (isUnit && tFamilies.length === 0 && p.data && p.data.editing ? VISIBLE_MONTHS : 1) : undefined,
       headerName: mo.label,
       flex: 1,
       minWidth: 168,
@@ -224,11 +224,11 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
   async function onCellClicked(e) {
     const col = e.colDef.colId || e.colDef.field;
     const row = e.data;
-    if (col === "dot" || col === "household" || col === "projectType" || col === "personnel") {
+    if (col === "dot" || col === "unit" || col === "activityType" || col === "category") {
       setDb((d) =>
-        isHh
-          ? { ...d, changedHouseholds: without(d.changedHouseholds, row.rowId) }
-          : { ...d, changedProjectRows: without(d.changedProjectRows, row.rowId) },
+        isUnit
+          ? { ...d, changedUnits: without(d.changedUnits, row.rowId) }
+          : { ...d, changedActivityRows: without(d.changedActivityRows, row.rowId) },
       );
       return;
     }
@@ -251,8 +251,8 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
               if (v && v !== sub && (await guardRowEdit())) setSub(v);
             }}
           >
-            <ToggleButton value="household">Unit</ToggleButton>
-            <ToggleButton value="project">Activity Type</ToggleButton>
+            <ToggleButton value="unit">Unit</ToggleButton>
+            <ToggleButton value="activity">Activity Type</ToggleButton>
           </ToggleButtonGroup>
           <MonthStepper
             windowStart={windowStart}
@@ -271,11 +271,11 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
           </Button>
         </div>
         <div className="modal-body grid-body" style={{ paddingTop: 0 }}>
-          {!isHh && pRows.length === 0 ? (
+          {!isUnit && aRows.length === 0 ? (
             <div className="list-empty">
               <span>
                 {"No results found. Start by creating a Type O Mapping "}
-                <button type="button" className="text-link" onClick={() => openCreateMapping({ cycle: "O", fromSchedule: true })}>
+                <button type="button" className="text-link" onClick={() => openCreateMapping({ type: "O", fromSchedule: true })}>
                   here
                 </button>
                 .

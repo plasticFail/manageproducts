@@ -1,7 +1,7 @@
-export const PROJECT_TYPES = ["Alpha", "Bravo", "Charlie"];
-export const PERSONNEL_LIST = ["Category A", "Category B", "Category C", "Category D"];
-export const PERSONNEL_BY_PROJECT_TYPE = { Alpha: PERSONNEL_LIST, Bravo: PERSONNEL_LIST, Charlie: PERSONNEL_LIST };
-export const HOUSEHOLDS = [
+export const ACTIVITY_TYPES = ["Alpha", "Bravo", "Charlie"];
+export const CATEGORY_LIST = ["Category A", "Category B", "Category C", "Category D"];
+export const CATEGORY_BY_ACTIVITY_TYPE = { Alpha: CATEGORY_LIST, Bravo: CATEGORY_LIST, Charlie: CATEGORY_LIST };
+export const UNITS = [
   "123A",
   "456B",
   "789C",
@@ -20,9 +20,9 @@ export const HOUSEHOLDS = [
   "778R",
 ];
 export const VISIBLE_MONTHS = 6;
-// Year (and Month) column width in the Schedule for All Households tables
+// Year (and Month) column width in the Schedule for All Units tables
 const YEAR_COL_W = 180;
-const CYCLE_FILTERS = ["All", "O", "T", "X"];
+const TYPE_FILTERS = ["All", "O", "T", "X"];
 export const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const CURRENT_YEAR = 2026;
 const YEAR_OPTIONS = ["2025", "2026", "2027", "2028", "2029", "2030"];
