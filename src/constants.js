@@ -26,3 +26,6 @@ const CYCLE_FILTERS = ["All", "O", "T", "X"];
 export const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const CURRENT_YEAR = 2026;
 const YEAR_OPTIONS = ["2025", "2026", "2027", "2028", "2029", "2030"];
+
+// Type X Mappings with one of these Codes keep their Product Families out of the Schedule (not offered in Fixed).
+export const NOT_SCHEDULED_CODES = ["PREP"];

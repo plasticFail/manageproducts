@@ -21,7 +21,7 @@ Naming note: code identifiers are the old names (`household`=Unit, `cycle`=Type,
 ## Business rules worth porting (all in `src/lib/domain.js`)
 - `fixedPool`: Fixed offers families not in Type O/T. Type X families are offered whole; unmapped families can also be broken into Products (family and products stay in sync).
 - `pruneSchedule`: after any Mapping or Product Family change, schedule entries that no longer fit are removed, and the confirm dialog previews exactly what will go.
-- `validateFamily`: names must be unique and at most 2 syllables; Products likewise unique.
+- `validateFamily`: names must be unique across Product Families and Products; Products must be unique too.
 - `withTabDots` and row dots: new/updated rows are flagged until clicked; a tab shows a dot while it has any flagged row.
 - A Product Family can be mapped only once: to one Type, and within Type O to one Activity Type + Category. Deleting a Product Family removes it from its Mapping, and a Mapping left with no families is deleted.
 

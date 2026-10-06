@@ -143,10 +143,7 @@ export function initialDb(preset = "full") {
     ],
     // Fixed per Household (does not vary by month): a Product Family (chip) or a Product (plain text) that is not mapped to Cycle O or T.
     fixed: {
-      "123A": [
-        { kind: "family", name: "PREP KIT" },
-        { kind: "product", name: "HAMMER" },
-      ],
+      "123A": [{ kind: "product", name: "HAMMER" }],
       "456B": [{ kind: "family", name: "CLOTHES" }],
     },
     hiddenHouseholds: [],

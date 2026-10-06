@@ -1,5 +1,4 @@
-import { MONTH_NAMES, PERSONNEL_LIST, PROJECT_TYPES } from "../constants";
-import { syllable } from "syllable";
+import { MONTH_NAMES, NOT_SCHEDULED_CODES, PERSONNEL_LIST, PROJECT_TYPES } from "../constants";
 import { up } from "./utils";
 
 export function cycleForFamily(db, name) {
@@ -43,9 +42,14 @@ export function projectRows(db) {
       PERSONNEL_LIST.indexOf(a.personnel) - PERSONNEL_LIST.indexOf(b.personnel),
   );
 }
-// Household tab, Fixed column: Type X Product Families (whole only) and unmapped Product Families with their Products; never Type O or T.
+// Household tab, Fixed column: Type X Product Families (whole only) and unmapped Product Families with their Products; never Type O, T or Type X with Code PREP.
 export function fixedPool(db) {
-  const taken = new Set(db.mappings.filter((m) => m.cycle === "O" || m.cycle === "T").flatMap((m) => m.families));
+  // Type O and T families are scheduled elsewhere; Type X families with a hidden Code (PREP) are not scheduled at all.
+  const taken = new Set(
+    db.mappings
+      .filter((m) => m.cycle === "O" || m.cycle === "T" || (m.cycle === "X" && NOT_SCHEDULED_CODES.includes(m.code)))
+      .flatMap((m) => m.families),
+  );
   const fams = db.families.filter((f) => !taken.has(f.name));
   // A Product Family in a Type X Mapping can only be picked as a whole ("whole"); unmapped Product Families can also be broken down into Products.
   const whole = fams.filter((f) => db.mappings.some((m) => m.families.includes(f.name))).map((f) => f.name);
@@ -158,10 +162,6 @@ export function withTabDots(before, after, fromTab) {
   dots.delete(fromTab);
   return { ...after, tabDots: [...dots] };
 }
-function familySyllables(name) {
-  const lib = syllable;
-  return lib ? lib(name.toLowerCase()) : 0;
-}
 export function validateFamily(allFamilies, rawName, rawProducts, editingName = null) {
   const errors = {};
   const name = up((rawName || "").trim());
@@ -171,11 +171,6 @@ export function validateFamily(allFamilies, rawName, rawProducts, editingName = 
   else {
     const prodClash = allFamilies.find((f) => f.name !== editingName && f.products.some((e) => e.toLowerCase() === name.toLowerCase()));
     if (prodClash) errors.name = `Already exists as a Product in ${prodClash.name} Product Family.`;
-    else {
-      // Product Family names are kept to 2 syllables or fewer (syllable.js, from the npm package "syllable").
-      const syl = familySyllables(name);
-      if (syl > 2) errors.name = `Has ${syl} syllables. Maximum is 2.`;
-    }
   }
   const rows = rawProducts.map((p) => up((p || "").trim()));
   const productErrors = {};

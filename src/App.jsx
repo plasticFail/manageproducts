@@ -28,7 +28,7 @@ import { theme } from "./theme/index";
 
 const isListView = (v) => ["mappingList", "scheduleGrid", "productsList"].includes(v.name);
 const LIST_VIEW = { mapping: { name: "mappingList" }, schedule: { name: "scheduleGrid" }, products: { name: "productsList" } };
-const SEARCH_PLACEHOLDER = { mapping: "Search Mapping\u2026", schedule: "Search Schedule\u2026", products: "Search Product Family\u2026" };
+const SEARCH_PLACEHOLDER = { mapping: "Search Mapping\u2026", schedule: "Search Schedule\u2026", products: "Search\u2026" };
 export default function App() {
   const [preset, setPreset] = useState(
     () => ({ empty: "empty", blank: "blank" })[new URLSearchParams(location.search).get("data")] || "full",
