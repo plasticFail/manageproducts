@@ -1,6 +1,6 @@
 # Manage Products prototype
 
-React + MUI + AG Grid prototype of the Manage Products modal (Mapping, Schedule, Product Family). See `CLAUDE.md` for behaviour rules, terminology and layout numbers.
+React + MUI + AG Grid prototype of the Manage Products modal (Mapping, Schedule, Product Family). Developers: start with `docs/HANDOVER.md`. See `CLAUDE.md` for behaviour rules, terminology and layout numbers.
 
 ```bash
 npm install
