@@ -102,10 +102,27 @@ export const mappingSummary = (m) =>
       v,
     ])
     .filter((x) => x !== null);
-// Dialog tables: one "For" column naming where the Product Family is scheduled (a Household id or a Project Type · Personnel pair).
-function scheduleForCols() {
+// Dialog tables: one column naming where the Product Family is scheduled. The header follows what the rows hold:
+// only Units -> "Unit"; only Activity Type · Category pairs -> "Activity Type · Category"; a mix -> "For".
+// With no schedule rows (mapped only) the Mapping's own kind decides.
+function scheduleForCols(rows, fallbackKind) {
   const dash = (p) => p.value || <Dash />;
-  return [{ headerName: "For", field: "where", width: 190, cellRenderer: dash }];
+  const kinds = new Set((rows || []).filter((r) => r.where).map((r) => r.kind));
+  const kind = kinds.size === 1 ? [...kinds][0] : kinds.size === 0 ? fallbackKind : null;
+  const headerName = kind === "household" ? "Unit" : kind === "project" ? "Activity Type \u00B7 Category" : "For";
+  return [{ headerName, field: "where", width: 210, cellRenderer: dash }];
+}
+// Every delete / confirm table lists the columns it has in this order: Activity Type · Category (or Unit), Schedule, Product Family (Type and Code go in the sentence above).
+// Fixed widths for all but the last column, which takes the remaining space, so the table never scrolls sideways.
+const COL_RANK = { where: 1, when: 2, family: 3 };
+const PREVIEW_COL_WIDTH = { when: 200, family: 200 }; // 210 + 200 + 200 stays inside the 620px dialog table
+function previewCols(cols) {
+  const sorted = [...cols].sort((a, b) => COL_RANK[a.field || a.colId] - COL_RANK[b.field || b.colId]);
+  return sorted.map(({ flex, minWidth, ...c }, i) => {
+    const key = c.field || c.colId;
+    const width = PREVIEW_COL_WIDTH[key] || c.width;
+    return i === sorted.length - 1 ? { ...c, width, minWidth: 150, flex: 1 } : { ...c, width };
+  });
 }
 // Delete Mapping: the Mapping's parameters in a sentence, then one row per Product Family × where it is scheduled.
 export function DeleteMappingPreview({ db, m, removed }) {
@@ -124,11 +141,10 @@ export function DeleteMappingPreview({ db, m, removed }) {
     <ScrollPreviewGrid
       rowData={rows}
       getRowId={(p) => String(p.data.id)}
-      columnDefs={[
+      columnDefs={previewCols([
         {
           headerName: "Product Family",
           field: "family",
-          width: 210,
           cellRenderer: (p) => (
             <span className="fam-with-team">
               {p.data.team ? <span className="fam-sched-team">{p.data.team}:</span> : null}
@@ -137,44 +153,16 @@ export function DeleteMappingPreview({ db, m, removed }) {
           ),
         },
         ...scheduleForCols(rows, m.cycle === "O" ? "project" : "household"),
-        { headerName: "Schedule", field: "when", flex: 1, minWidth: 180, cellRenderer: dash },
-      ]}
+        { headerName: "Schedule", field: "when", cellRenderer: dash },
+      ])}
       rowStyle={{ cursor: "default" }}
       suppressRowHoverHighlight
     />
   );
 }
 // Delete Product Family: where the family is used — one row per Schedule entry (or one row if only mapped).
-function familyMappingParts(db, name) {
-  return db.mappings
-    .filter((m) => m.families.includes(name))
-    .map((m) => {
-      const teams = isPersonnelCycle(m.cycle) ? (m.personnel || []).filter((p) => ((m.links || {})[p] || []).includes(name)) : [];
-      return [
-        ["Type", m.cycle],
-        ["Code", m.code],
-        ["Activity Type", m.projectType],
-        ["Category", teams.join(", ")],
-      ].filter(([, v]) => v);
-    });
-}
-const paramText = (parts) =>
-  parts
-    .flatMap(([k, v], i) => [
-      i ? (
-        <span key={"s" + i} className="param-label">
-          {", "}
-        </span>
-      ) : null,
-      <span key={k} className="param-label">
-        {k}
-      </span>,
-      " ",
-      v,
-    ])
-    .filter((x) => x !== null);
 export function DeleteFamilyPreview({ db, name }) {
-  const maps = familyMappingParts(db, name);
+  const maps = db.mappings.filter((m) => m.families.includes(name));
   const usage = scheduleUsage(db, [name]);
   const rows = (
     usage.length ? usage.map((u) => ({ kind: u.kind, where: u.where, when: u.when })) : [{ kind: null, where: null, when: null }]
@@ -182,32 +170,24 @@ export function DeleteFamilyPreview({ db, name }) {
   const mapped = db.mappings.find((m) => m.families.includes(name));
   const dash = (p) => p.value || <Dash />;
   return (
-    <ScrollPreviewGrid
-      rowData={rows}
-      getRowId={(p) => String(p.data.id)}
-      columnDefs={[
-        {
-          headerName: "Mapping",
-          colId: "mapping",
-          width: 250,
-          wrapText: true,
-          cellRenderer: () =>
-            maps.length ? (
-              <div>
-                {maps.map((parts, i) => (
-                  <div key={i}>{paramText(parts)}</div>
-                ))}
-              </div>
-            ) : (
-              <Dash />
-            ),
-        },
-        ...scheduleForCols(rows, mapped && mapped.cycle === "O" ? "project" : "household"),
-        { headerName: "Schedule", field: "when", flex: 1, minWidth: 160, cellRenderer: dash },
-      ]}
-      rowStyle={{ cursor: "default" }}
-      suppressRowHoverHighlight
-    />
+    <>
+      {maps.map((m) => (
+        <p key={m.id} style={{ margin: "0 0 16px" }}>
+          {mappingSummary(m)}
+          <span className="param-label">:</span>
+        </p>
+      ))}
+      <ScrollPreviewGrid
+        rowData={rows}
+        getRowId={(p) => String(p.data.id)}
+        columnDefs={previewCols([
+          ...scheduleForCols(rows, mapped && mapped.cycle === "O" ? "project" : "household"),
+          { headerName: "Schedule", field: "when", cellRenderer: dash },
+        ])}
+        rowStyle={{ cursor: "default" }}
+        suppressRowHoverHighlight
+      />
+    </>
   );
 }
 const nameList = (xs) => (xs.length <= 2 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
@@ -217,16 +197,15 @@ export function RemovedSchedulePreview({ db, rows }) {
     <ScrollPreviewGrid
       rowData={data}
       getRowId={(p) => String(p.data.id)}
-      columnDefs={[
+      columnDefs={previewCols([
         {
           headerName: "Product Family",
           field: "family",
-          width: 190,
           cellRenderer: (p) => <FamilyTag name={p.value} cycle={cycleForFamily(db, p.value)} />,
         },
         ...scheduleForCols(rows, "household"),
-        { headerName: "Schedule", field: "when", flex: 1, minWidth: 180 },
-      ]}
+        { headerName: "Schedule", field: "when" },
+      ])}
       rowStyle={{ cursor: "default" }}
       suppressRowHoverHighlight
     />
