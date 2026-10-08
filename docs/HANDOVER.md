@@ -4,8 +4,8 @@ For developers picking this up. The prototype is the reference for **behaviour a
 
 ## What it is
 A modal with three tabs:
-- **Mapping**: admins create Mappings by **Type** (O, T, X). Type O = Activity Type + Categories, each Category with its own Product Families. Type T = Product Families scheduled per Unit. Type X = Product Families with an optional Code (e.g. PREP).
-- **Schedule**: two sub-tabs. *Unit* rows: Fixed (a Product Family or Product that is not scheduled monthly) plus one Type T family choice per month. *Activity Type* rows: one row per Activity Type × Category, months choose from the families linked to that pair in its Type O Mapping. Six months visible at a time.
+- **Mapping**: admins create Mappings by **Type - Code** (O - All, T/X - All except PREP, X - PREP). Type O = Activity Type + Categories, each Category with its own Product Families. Type T/X = Product Families scheduled per Unit per month. X - PREP (Type X, Code PREP) = one Product Family, not scheduled. T/X means Type T and X share the Product Families; the real system stores T, X and O separately, so a T/X Mapping saves as a T and an X record with the same families.
+- **Schedule**: two sub-tabs. *Unit* rows: Fixed (read-only: one Product of an unmapped Product Family) plus Type T/X Product Families per month. *Activity Type* rows: one row per Activity Type × Category, months choose from the families linked to that pair in its Type O Mapping. Six months visible at a time.
 - **Product Family**: families and their Products.
 
 ## What is prototype-only (replace with real services)
@@ -15,11 +15,11 @@ A modal with three tabs:
 - Row/tab dots are session state only.
 
 ## Data shape (`db`)
-`families[{name, products[], createdAt, updatedAt}]` · `mappings[{id, type, code, activityType, category[], links{category:[families]}, families[]}]` · `schedules[{unit, key:"YYYY-M" (0-based month), family}]` · `activitySchedules[{activityType, category, key, family}]` · `fixed{unit:[{kind:"family"|"product", name}]}` · `changedMappings/changedFamilies/changedUnits/changedActivityRows` (ids with a row dot) · `tabDots`.
+`families[{name, products[], createdAt, updatedAt}]` · `mappings[{id, type (O | T/X | X), code (PREP | null), activityType, category[], links{category:[families]}, families[]}]` · `schedules[{unit, key:"YYYY-M" (0-based month), family}]` · `activitySchedules[{activityType, category, key, family}]` · `fixed{unit:[{kind:"product", name}]}` · `changedMappings/changedFamilies/changedUnits/changedActivityRows` (ids with a row dot) · `tabDots`.
 Naming: code identifiers match the UI (`unit`, `type`, `activityType`, `category`). Older builds used `household`, `cycle`, `projectType`, `personnel`.
 
 ## Business rules worth porting (all in `src/lib/domain.js`)
-- `fixedPool`: Fixed offers families not in Type O/T. Type X families are offered whole; unmapped families can also be broken into Products (family and products stay in sync).
+- `fixedPool`: Products of Product Families that are not mapped at all. Fixed is read-only and assigned per Unit (seed data: Product Family FIXED, one Product per Unit); entries are pruned if their family becomes mapped.
 - `pruneSchedule`: after any Mapping or Product Family change, schedule entries that no longer fit are removed, and the confirm dialog previews exactly what will go.
 - `validateFamily`: names must be unique across Product Families and Products; Products must be unique too.
 - `withTabDots` and row dots: new/updated rows are flagged until clicked; a tab shows a dot while it has any flagged row.
