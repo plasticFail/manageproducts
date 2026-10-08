@@ -70,7 +70,6 @@ const t = {
   disabled: "rgba(255,255,255,0.5)", // product: 50% (PRIZM disabled is 38%) — disabled text, icons, placeholders in disabled fields
   placeholder: "rgba(255,255,255,0.6)", // placeholder in enabled fields (kept above the 50% disabled level)
   arrow: "rgba(255,255,255,0.56)", // dropdown arrow (MUI action.active on dark)
-  chipInk: "rgba(0,0,0,0.87)", // text on filled type chips
   icon: "rgba(255,255,255,0.87)", // action icons, chevrons, clear ✕
   white: P.white, // prizm-white — text on destructive buttons
   // brand & status
@@ -85,11 +84,9 @@ const t = {
   destructiveDark: P.red800, // error-dark · red/800 — hover
   destructiveTint: "rgba(243,89,98,0.08)",
   countChip: "rgba(255,255,255,0.16)", // round count badge in multi-selects
-  // type colours (tags/chips) — nearest PRIZM palette steps
-  // filled chips with black text (chipInk); exploring blue / grey / amber
-  typeO: P.blue200, // blue/200
-  typeT: P.grey200, // grey/200
-  typeX: P.amber300, // amber/300
+  // table chips (Mapping and Schedule): one fill for every Product Family, no Type colours, no border
+  tableChipBg: P.grey900, // grey/900 #2C2C2C
+  tableChipInk: P.white, // prizm-white
   // schedule
   rowEditing: P.cyan1000, // cyan/1000 — unit row being edited inline
   allRow: "#283A3D", // product deviation: cyan 8% over grey/900 — pinned "All" row background
@@ -656,12 +653,10 @@ const css = `
   .muted{ color:var(--muted); }
   .error{ color:var(--danger); font-size:12px; margin-top:6px; }
 
-  .tag-type-O{ background:${t.typeO} !important; border-color:${t.typeO} !important; color:${t.chipInk} !important; }
-  .tag-type-T{ background:${t.typeT} !important; border-color:${t.typeT} !important; color:${t.chipInk} !important; }
-  .tag-type-X{ background:${t.typeX} !important; border-color:${t.typeX} !important; color:${t.chipInk} !important; }
-  .tag-type-O .MuiChip-deleteIcon, .tag-type-T .MuiChip-deleteIcon, .tag-type-X .MuiChip-deleteIcon,
-  .tag-type-O .chip-x, .tag-type-T .chip-x, .tag-type-X .chip-x{ color:rgba(0,0,0,0.6) !important; }
-  .tag-type-O .chip-x:hover, .tag-type-T .chip-x:hover, .tag-type-X .chip-x:hover{ color:rgba(0,0,0,0.87) !important; }
+  .table-chip{ background:${t.tableChipBg} !important; border-color:${t.tableChipBg} !important; color:${t.tableChipInk} !important; }
+  .multi-chip.MuiChip-root{ background:rgba(255,255,255,0.16); border-color:transparent; color:${t.text}; }
+  .table-chip .MuiChip-deleteIcon, .table-chip .chip-x{ color:${t.muted} !important; }
+  .table-chip .chip-x:hover{ color:${t.tableChipInk} !important; }
   .family-tags-wrap{ display:flex; flex-wrap:wrap; gap:4px; }
   .cell-tags{ display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-width:110px; }
   /* Schedule month cells: chips and dashes centred under the centred month header */
@@ -693,8 +688,8 @@ const css = `
   .field{ margin-bottom:16px; min-width:0; }
   .param-label{ color:var(--muted); } /* same colour as input labels */
   .field-label{ display:block; font-size:12px; letter-spacing:0.4px; color:var(--muted); margin-bottom:6px; }
-  .grid4{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; }
-  @media (max-width:760px){ .grid4{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  .grid3{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; }
+  @media (max-width:760px){ .grid3{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
   .fam-input input{ text-transform:uppercase; }
   .fam-input input::placeholder{ text-transform:none; }
   .select-field .muted{ color:${t.placeholder}; }

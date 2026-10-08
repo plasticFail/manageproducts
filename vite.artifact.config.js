@@ -11,7 +11,7 @@ export default defineConfig({
       name: "artifact-index",
       closeBundle() {
         mkdirSync("dist-artifact", { recursive: true });
-        writeFileSync("dist-artifact/index.html", `<title>Manage Products V2.2</title>\n<div id="root"></div>\n<script src="app.js"></script>\n`);
+        writeFileSync("dist-artifact/index.html", `<title>Manage Products V2.3</title>\n<div id="root"></div>\n<script src="app.js"></script>\n`);
       },
     },
   ],

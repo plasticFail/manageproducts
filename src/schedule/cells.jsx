@@ -9,45 +9,18 @@ import { productTextList } from "../lib/utils";
 
 export const ScheduleCtx = createContext(null);
 const safeId = (s) => String(s).replace(/[^A-Za-z0-9]+/g, "-");
-const cellTypeClass = (db, f) => {
-  const c = typeForFamily(db, f);
-  return c ? `tag-type-${c}` : "";
-};
-// Fixed column content: a Product Family is a chip, a Product is plain text.
-function FixedItems({ db, items }) {
-  if (!items.length)
-    return (
-      <div className="cell-tags">
-        <Dash />
-      </div>
-    );
-  const sorted = [...items].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "family" ? -1 : 1));
-  return (
-    <div className="cell-tags fixed-tags">
-      {sorted.map((it) =>
-        it.kind === "family" ? (
-          <FamilyTag key={"f" + it.name} name={it.name} variant="cellTag" type={typeForFamily(db, it.name)} />
-        ) : (
-          <span key={"p" + it.name} className="plain-item" title="Product">
-            {it.name}
-          </span>
-        ),
-      )}
-    </div>
-  );
-}
 export function ScheduleMonthCell(params) {
   const ctx = useContext(ScheduleCtx);
   const { db } = ctx;
   const key = params.colDef.field;
   const row = params.data;
   if (ctx.editing === row.rowId && ctx.noFamilies) {
-    // No Type T Mapping yet: the first month cell spans all six months with one message and the rest stay empty.
+    // No Type T/X Mapping yet: the first month cell spans all six months with one message and the rest stay empty.
     if (key !== ctx.firstMonthKey) return null;
     return (
       <div className="span-empty">
         <span>
-          {"No results found. Start by creating a Type T Mapping "}
+          {"No results found. Start by creating a Type T/X Mapping "}
           <button type="button" className="text-link" onClick={ctx.createT}>
             here
           </button>
@@ -72,7 +45,6 @@ export function ScheduleMonthCell(params) {
         onCommit={ctx.commitDraft}
         getSub={(f) => `Type ${typeForFamily(db, f)}`}
         getDetail={(f) => productTextList((db.families.find((x) => x.name === f) || { products: [] }).products)}
-        chipClass={(f) => cellTypeClass(db, f)}
       />
     );
   }
@@ -86,50 +58,10 @@ export function ScheduleMonthCell(params) {
   return (
     <div className="cell-tags">
       {fams.map((f) => (
-        <FamilyTag key={f} name={f} variant="cellTag" type={typeForFamily(db, f)} />
+        <FamilyTag key={f} name={f} variant="cellTag" />
       ))}
     </div>
   );
-}
-export function ScheduleFixedCell(params) {
-  const ctx = useContext(ScheduleCtx);
-  const { db } = ctx;
-  const row = params.data;
-  if (ctx.editing === row.rowId) {
-    return (
-      <PickerField
-        id={`fixed-${safeId(row.rowId)}`}
-        options={ctx.fixedOptions}
-        value={ctx.expandFixed(ctx.getDraft("__fixed"))} // a selected Product Family shows all its Products as checked
-        hideTag={(n) => ctx.fixedKind(n) === "product" && ctx.getDraft("__fixed").includes(ctx.fixedFamilyOf(n))} // ...but only the Product Family chip is shown
-        stack
-        placeholder="Select"
-        emptyText="No Product Family or Product available."
-        showCount={false}
-        showChevron={false}
-        optionIndent={(n) => ctx.fixedKind(n) === "product"} // Products sit indented under their Product Family
-        indeterminate={(n) => ctx.fixedKind(n) === "family" && ctx.partlySelected(n)}
-        tagKind={ctx.fixedKind}
-        onToggle={(n) => ctx.toggleDraft("__fixed", n)}
-        onClear={() => ctx.clearDraft("__fixed")}
-        onCommit={ctx.commitDraft}
-        getSub={(n) => {
-          if (ctx.fixedKind(n) !== "family") return "";
-          const c = typeForFamily(db, n);
-          if (!c) return "";
-          const m = db.mappings.find((x) => x.type === c && x.families.includes(n));
-          return m && m.code ? `Type ${c} · ${m.code}` : `Type ${c}`; // a Mapping with a Code shows it, e.g. Type X · PREP
-        }}
-        getDetail={(n) =>
-          ctx.fixedKind(n) === "family" && typeForFamily(db, n)
-            ? productTextList((db.families.find((x) => x.name === n) || { products: [] }).products)
-            : ""
-        } // Type X families list their Products like the month options do
-        chipClass={(n) => (ctx.fixedKind(n) === "family" ? cellTypeClass(db, n) : "")}
-      />
-    );
-  }
-  return <FixedItems db={db} items={ctx.getSavedFixed(row.rowId)} />;
 }
 export function ScheduleActionsCell(params) {
   const ctx = useContext(ScheduleCtx);

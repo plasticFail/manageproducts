@@ -10,16 +10,13 @@ import {
   ThemeProvider,
   ToggleButton,
   ToggleButtonGroup,
-  Tooltip,
 } from "@mui/material";
 import Close from "@mui/icons-material/Close";
 import { ConfirmDialog, DbContext, UiContext } from "./components/common";
 import { DATA_PRESETS, initialDb } from "./data/initialDb";
 import { DEFAULT_WINDOW_START } from "./schedule/MonthNav";
 import { FamilyForm } from "./products/FamilyForm";
-import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import { MappingForm } from "./mapping/MappingForm";
-import { MappingLegend, ScheduleLegend } from "./schedule/legend";
 import { MappingList } from "./mapping/MappingList";
 import { ProductsList } from "./products/ProductsList";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -281,13 +278,6 @@ export default function App() {
                     }}
                     sx={{ maxWidth: 260, my: "8px" }}
                   />
-                  {tab === "schedule" || tab === "mapping" ? (
-                    <Tooltip placement="bottom-end" title={tab === "schedule" ? <ScheduleLegend /> : <MappingLegend />}>
-                      <IconButton className="info-btn" aria-label={tab === "schedule" ? "Schedule legend" : "Mapping legend"}>
-                        <InfoOutlined />
-                      </IconButton>
-                    </Tooltip>
-                  ) : null}
                 </div>
               </div>
             ) : null}

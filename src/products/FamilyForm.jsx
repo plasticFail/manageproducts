@@ -28,7 +28,7 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
     setErrors({});
     const now = nowStamp();
     setDb((d) => {
-      let { families, mappings, schedules, activitySchedules, fixed } = d;
+      let { families, mappings, schedules, activitySchedules } = d;
       if (editingName) {
         families = families.map((f) =>
           f.name === editingName ? { name: res.name, products: res.products, createdAt: f.createdAt, updatedAt: now } : f,
@@ -42,9 +42,6 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
           }));
           schedules = schedules.map((s) => ({ ...s, family: rename(s.family) }));
           activitySchedules = activitySchedules.map((s) => ({ ...s, family: rename(s.family) }));
-          fixed = Object.fromEntries(
-            Object.entries(fixed).map(([h, arr]) => [h, arr.map((x) => (x.kind === "family" ? { ...x, name: rename(x.name) } : x))]),
-          );
         }
       } else families = [...families, { name: res.name, products: res.products, createdAt: now, updatedAt: now }];
       return withTabDots(
@@ -55,7 +52,6 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
           mappings,
           schedules,
           activitySchedules,
-          fixed,
           changedFamilies: withAdded(d.changedFamilies, res.name),
         }).db,
         fromTab,

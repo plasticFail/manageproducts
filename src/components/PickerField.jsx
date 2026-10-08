@@ -35,7 +35,6 @@ export function PickerField({
   showCount = true,
   showChevron = true,
   stack = false,
-  chipClass,
   uppercase = true,
   emptyText = "No matches",
   error = "",
@@ -106,7 +105,7 @@ export function PickerField({
               <Chip
                 key={key}
                 {...tagProps}
-                className={[className, chipClass ? chipClass(v) : ""].join(" ")}
+                className={[className, "multi-chip"].join(" ")}
                 label={v}
                 deleteIcon={<Close className="chip-x" />}
               />
