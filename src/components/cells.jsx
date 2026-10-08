@@ -1,8 +1,9 @@
 import { Chip } from "@mui/material";
 import { isCategoryType } from "../lib/utils";
 
-export function FamilyTag({ name, type, variant = "tag", ...rest }) {
-  return <Chip variant={variant} label={name} className={type ? `tag-type-${type}` : ""} {...rest} />;
+// Table chip: one fill for every Product Family (no Type colours).
+export function FamilyTag({ name, variant = "tag", ...rest }) {
+  return <Chip variant={variant} label={name} className="table-chip" {...rest} />;
 }
 export const Dash = () => <span className="muted">—</span>;
 function categoryWithFamilies(db, m) {
@@ -23,7 +24,7 @@ export function FamilyCell({ db, m }) {
               {p}:
             </span>
             {m.links[p].map((f) => (
-              <FamilyTag key={f} name={f} type={m.type} />
+              <FamilyTag key={f} name={f} />
             ))}
           </div>
         ))}
@@ -33,7 +34,7 @@ export function FamilyCell({ db, m }) {
   return (
     <div className="family-tags-wrap">
       {m.families.map((f) => (
-        <FamilyTag key={f} name={f} type={m.type} />
+        <FamilyTag key={f} name={f} />
       ))}
     </div>
   );

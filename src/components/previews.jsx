@@ -4,8 +4,8 @@ import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import { IconButton } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
-import { typeForFamily, scheduleUsage } from "../lib/domain";
-import { formatDate, isCategoryType } from "../lib/utils";
+import { scheduleUsage } from "../lib/domain";
+import { formatDate, isCategoryType, typeCodeKey, typeCodeLabel } from "../lib/utils";
 
 export function mappingColumns(db, { withMeta, onEdit, onDelete }) {
   const cols = [];
@@ -22,8 +22,7 @@ export function mappingColumns(db, { withMeta, onEdit, onDelete }) {
     );
   }
   cols.push(
-    { field: "type", headerName: "Type", width: 100 },
-    { field: "code", headerName: "Code", width: 80, cellRenderer: (p) => p.value || <Dash /> },
+    { colId: "type", headerName: "Type - Code", width: 220, valueGetter: (p) => typeCodeLabel(typeCodeKey(p.data)) },
     { field: "activityType", headerName: "Activity Type", width: 150, cellRenderer: (p) => p.value || <Dash /> },
     { colId: "families", headerName: "Product Family", flex: 1, minWidth: 200, cellRenderer: (p) => <FamilyCell db={db} m={p.data} /> },
   );
@@ -86,12 +85,9 @@ function ScrollPreviewGrid({ maxHeight = 300, ...props }) {
     </div>
   );
 }
-// "Type O, Activity Type Alpha:" — parameter names in the input-label colour, values in text colour.
+// "Type - Code O, Activity Type Alpha:" — parameter names in the input-label colour, values in text colour.
 export const mappingSummary = (m) =>
-  [
-    ["Type", m.type],
-    ["Code", m.code],
-  ]
+  [["Type - Code", typeCodeKey(m)]]
     .filter(([, v]) => v)
     .flatMap(([k, v], i) => [
       i ? ", " : null,
@@ -112,7 +108,7 @@ function scheduleForCols(rows, fallbackKind) {
   const headerName = kind === "unit" ? "Unit" : kind === "activity" ? "Activity Type \u00B7 Category" : "For";
   return [{ headerName, field: "where", width: 210, cellRenderer: dash }];
 }
-// Every delete / confirm table lists the columns it has in this order: Activity Type · Category (or Unit), Schedule, Product Family (Type and Code go in the sentence above).
+// Every delete / confirm table lists the columns it has in this order: Activity Type · Category (or Unit), Schedule, Product Family (Type - Code goes in the sentence above).
 // Fixed widths for all but the last column, which takes the remaining space, so the table never scrolls sideways.
 const COL_RANK = { where: 1, when: 2, family: 3 };
 const PREVIEW_COL_WIDTH = { when: 200, family: 200 }; // 210 + 200 + 200 stays inside the 620px dialog table
@@ -148,7 +144,7 @@ export function DeleteMappingPreview({ db, m, removed }) {
           cellRenderer: (p) => (
             <span className="fam-with-team">
               {p.data.team ? <span className="fam-sched-team">{p.data.team}:</span> : null}
-              <FamilyTag name={p.value} type={m.type} />
+              <FamilyTag name={p.value} />
             </span>
           ),
         },
@@ -201,7 +197,7 @@ export function RemovedSchedulePreview({ db, rows }) {
         {
           headerName: "Product Family",
           field: "family",
-          cellRenderer: (p) => <FamilyTag name={p.value} type={typeForFamily(db, p.value)} />,
+          cellRenderer: (p) => <FamilyTag name={p.value} />,
         },
         ...scheduleForCols(rows, "unit"),
         { headerName: "Schedule", field: "when" },

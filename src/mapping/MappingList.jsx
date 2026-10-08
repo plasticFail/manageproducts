@@ -3,17 +3,17 @@ import { DataGrid, useDb, useUi } from "../components/common";
 import { DeleteMappingPreview, UndoNote, mappingColumns, mappingSummary } from "../components/previews";
 import { useMemo } from "react";
 import { pruneSchedule } from "../lib/domain";
-import { without } from "../lib/utils";
+import { typeCodeKey, typeCodeLabel, without } from "../lib/utils";
 
 export function MappingList({ search, filter, setFilter, onCreate, onEdit }) {
   const { db, setDb } = useDb();
   const { confirm, notify } = useUi();
   const rows = useMemo(() => {
-    const byType = filter === "All" ? db.mappings : db.mappings.filter((m) => m.type === filter);
+    const byType = filter === "All" ? db.mappings : db.mappings.filter((m) => typeCodeKey(m) === filter);
     const term = search.trim().toLowerCase();
     const visible = term
       ? byType.filter((m) =>
-          [m.type, m.code, m.activityType, ...(m.category || []), ...m.families].filter(Boolean).join(" ").toLowerCase().includes(term),
+          [typeCodeKey(m), typeCodeLabel(typeCodeKey(m)), m.activityType, ...(m.category || []), ...m.families].filter(Boolean).join(" ").toLowerCase().includes(term),
         )
       : byType;
     return [...visible].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

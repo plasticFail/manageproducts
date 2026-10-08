@@ -1,4 +1,4 @@
-import { MONTH_NAMES, NOT_SCHEDULED_CODES, CATEGORY_LIST, ACTIVITY_TYPES } from "../constants";
+import { MONTH_NAMES, CATEGORY_LIST, ACTIVITY_TYPES } from "../constants";
 import { up } from "./utils";
 
 export function typeForFamily(db, name) {
@@ -16,8 +16,8 @@ const sortKeys = (keys) =>
     return ya - yb || ma - mb;
   });
 const familiesFor = (db, pred) => [...new Set(db.mappings.filter(pred).flatMap((m) => m.families))].sort((a, b) => a.localeCompare(b));
-// Unit tab, month cells: Type T Product Families only.
-export const unitCellFamilies = (db) => familiesFor(db, (m) => m.type === "T");
+// Unit tab, month cells: Type T/X Product Families only.
+export const unitCellFamilies = (db) => familiesFor(db, (m) => m.type === "T/X");
 export const pairLabel = (pt, p) => `${pt} · ${p}`;
 export const activityRowId = (pt, p) => `${pt}|${p}`;
 // Activity Type tab rows: one per Activity Type + Category pair in a Type O Mapping. A pair appears as soon as its Mapping exists.
@@ -42,25 +42,14 @@ export function activityRows(db) {
       CATEGORY_LIST.indexOf(a.category) - CATEGORY_LIST.indexOf(b.category),
   );
 }
-// Unit tab, Fixed column: Type X Product Families (whole only) and unmapped Product Families with their Products; never Type O, T or Type X with Code PREP.
+// Unit tab, Fixed column: Products of Product Families that are not mapped at all (read-only, assigned per Unit).
 export function fixedPool(db) {
-  // Type O and T families are scheduled elsewhere; Type X families with a hidden Code (PREP) are not scheduled at all.
-  const taken = new Set(
-    db.mappings
-      .filter((m) => m.type === "O" || m.type === "T" || (m.type === "X" && NOT_SCHEDULED_CODES.includes(m.code)))
-      .flatMap((m) => m.families),
-  );
-  const fams = db.families.filter((f) => !taken.has(f.name));
-  // A Product Family in a Type X Mapping can only be picked as a whole ("whole"); unmapped Product Families can also be broken down into Products.
-  const whole = fams.filter((f) => db.mappings.some((m) => m.families.includes(f.name))).map((f) => f.name);
+  const mapped = new Set(db.mappings.flatMap((m) => m.families));
+  const fams = db.families.filter((f) => !mapped.has(f.name));
   const byName = (a, b) => a.localeCompare(b);
   return {
-    whole,
     families: fams.map((f) => f.name).sort(byName),
-    products: fams
-      .filter((f) => !whole.includes(f.name))
-      .flatMap((f) => f.products.map((p) => ({ name: p, family: f.name })))
-      .sort((a, b) => byName(a.name, b.name)),
+    products: fams.flatMap((f) => f.products.map((p) => ({ name: p, family: f.name }))).sort((a, b) => byName(a.name, b.name)),
   };
 }
 // Where each of these Product Families is scheduled: [{ family, where: "Unit 123A" | "Alpha · Team 1", when: "Sep 2026, Nov 2026" | "Fixed" }, …]
@@ -91,17 +80,15 @@ export function scheduleUsage(db, families) {
       .sort()
       .forEach((h) =>
         (db.fixed[h] || []).forEach((x) => {
-          if (x.kind === "family" && x.name === f) out.push({ family: f, kind: "unit", where: h, when: "Fixed" });
-          else if (x.kind === "product" && fam && fam.products.includes(x.name))
-            out.push({ family: f, kind: "unit", where: h, when: `Fixed · ${x.name}` });
+          if (fam && fam.products.includes(x.name)) out.push({ family: f, kind: "unit", where: h, when: `Fixed · ${x.name}` });
         }),
       );
   });
   return out;
 }
 // After a Mapping or Product Family change, Schedule entries that no longer fit are removed:
-// Unit months need Type T; Activity Type months need the Product Family linked to that Activity Type + Category (Type O);
-// Fixed needs a Product Family or Product that is not mapped to Type O or T.
+// Unit months need Type T/X; Activity Type months need the Product Family linked to that Activity Type + Category (Type O);
+// Fixed needs a Product whose Product Family is not mapped.
 // Returns the pruned db and the removed entries as preview rows { family, where, when }.
 export function pruneSchedule(d) {
   const removed = [];
@@ -133,13 +120,10 @@ export function pruneSchedule(d) {
     .sort()
     .forEach((h) => {
       const keep = (d.fixed[h] || []).filter((x) => {
-        const ok =
-          x.kind === "family"
-            ? pool.families.includes(x.name)
-            : pool.products.some((p) => p.name === x.name && !pool.whole.includes(p.family));
+        const ok = pool.products.some((p) => p.name === x.name);
         if (!ok) {
-          const owner = x.kind === "family" ? x.name : (d.families.find((f) => f.products.includes(x.name)) || {}).name || x.name;
-          removed.push({ family: owner, kind: "unit", where: h, when: x.kind === "family" ? "Fixed" : `Fixed · ${x.name}` });
+          const owner = (d.families.find((f) => f.products.includes(x.name)) || {}).name || x.name;
+          removed.push({ family: owner, kind: "unit", where: h, when: `Fixed · ${x.name}` });
         }
         return ok;
       });

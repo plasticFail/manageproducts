@@ -5,7 +5,7 @@ import { CATEGORY_BY_ACTIVITY_TYPE, ACTIVITY_TYPES } from "../constants";
 import { PickerField, SelectField } from "../components/PickerField";
 import { useEffect, useState } from "react";
 import { RemovedSchedulePreview, UndoNote } from "../components/previews";
-import { isCategoryType, nowStamp, ownershipLabels, productTextList, toggle, withAdded, without } from "../lib/utils";
+import { isCategoryType, nowStamp, ownershipLabels, productTextList, toggle, typeCodeKey, typeCodeLabel, withAdded, without } from "../lib/utils";
 import { activityRows, pruneSchedule, validateFamily, withTabDots } from "../lib/domain";
 import { snap, useInitialSnapshot } from "../components/EditGrid";
 
@@ -13,24 +13,23 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
   const { db, setDb } = useDb();
   const { confirm, notify, openSchedule } = useUi();
   const m = editingId ? db.mappings.find((x) => x.id === editingId) : null;
-  const [type, setTypeRaw] = useState(m ? m.type : (prefill && prefill.type) || "");
-  const [code, setCode] = useState(m ? m.code || "" : (prefill && prefill.code) || "");
+  const [type, setTypeRaw] = useState(m ? typeCodeKey(m) : (prefill && prefill.type) || "");
   const [pt, setPt] = useState(m ? m.activityType || "" : "");
   const [category, setCategory] = useState(m ? [...(m.category || [])] : []);
   const [links, setLinks] = useState(() => {
     const l = {};
-    if (m && isCategoryType(m.type))
+    if (m && m.type === "O")
       (m.category || []).forEach((p) => {
         l[p] = [...((m.links || {})[p] || [])];
       });
     return l;
   });
-  const [tFam, setTFam] = useState(m && m.type === "T" ? [...m.families] : []);
+  const [tFam, setTFam] = useState(m && m.type === "T/X" ? [...m.families] : []);
   const [xFam, setXFam] = useState(m && m.type === "X" ? [...m.families] : []);
   const [drafts, setDrafts] = useState([]);
   const [errors, setErrors] = useState({});
-  const initialMapping = useInitialSnapshot({ type, code, pt, category, links, tFam, xFam });
-  const mappingChanged = snap({ type, code, pt, category, links, tFam, xFam }) !== initialMapping;
+  const initialMapping = useInitialSnapshot({ type, pt, category, links, tFam, xFam });
+  const mappingChanged = snap({ type, pt, category, links, tFam, xFam }) !== initialMapping;
   const clearError = (...keys) =>
     setErrors((e) => {
       if (!keys.some((k) => e[k])) return e;
@@ -48,29 +47,19 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
   const allFamilies = [...db.families, ...drafts];
   const familyNames = allFamilies.map((f) => f.name).sort((a, b) => a.localeCompare(b));
   const productsOf = (name) => productTextList((allFamilies.find((f) => f.name === name) || { products: [] }).products);
-  const prepExists = db.mappings.some((x) => x.type === "X" && x.code === "PREP" && x.id !== editingId);
-  const tExists = db.mappings.some((x) => x.type === "T" && x.id !== editingId);
-  const xFull = db.mappings.some((x) => x.type === "X" && !x.code && x.id !== editingId) && prepExists;
-  const xPlainExists = db.mappings.some((x) => x.type === "X" && !x.code && x.id !== editingId);
-  // One Mapping each for T, X (no Code) and X · PREP: once X (no Code) exists, X can only be PREP.
-  const codeDisabled = type !== "X" || prepExists || xPlainExists;
-  const single = type === "X" && code === "PREP";
+  // One Mapping each for T/X and X-PREP. Type X-PREP is not scheduled and takes a single Product Family.
+  const txExists = db.mappings.some((x) => x.type === "T/X" && x.id !== editingId);
+  const xExists = db.mappings.some((x) => x.type === "X" && x.code === "PREP" && x.id !== editingId);
+  const single = type === "X-PREP";
   function setType(v) {
     dirty();
     setErrors({});
     setTypeRaw(v);
-    if (v !== "X" || prepExists) setCode("");
-    else if (xPlainExists) setCode("PREP");
     if (!isCategoryType(v)) {
       setPt("");
       setCategory([]);
       setLinks({});
     }
-  }
-  function changeCode(v) {
-    dirty();
-    setCode(v);
-    if (v === "PREP" && xFam.length > 1) setXFam([xFam[0]]);
   }
   function changePt(v) {
     dirty();
@@ -147,14 +136,14 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
         links: Object.fromEntries(category.map((p) => [p, [...(links[p] || [])]])),
         families: used,
       };
-    } else if (type === "T") {
+    } else if (type === "T/X") {
       if (!tFam.length) errs["fam:T"] = "This is a required field.";
       used = [...tFam];
       data = { type, code: null, activityType: null, category: null, links: null, families: used };
-    } else if (type === "X") {
+    } else if (type === "X-PREP") {
       if (!xFam.length) errs["fam:X"] = "This is a required field.";
       used = [...xFam];
-      data = { type, code: code || null, activityType: null, category: null, links: null, families: used };
+      data = { type: "X", code: "PREP", activityType: null, category: null, links: null, families: used };
     }
     setErrors(errs);
     if (Object.keys(errs).length) return;
@@ -200,7 +189,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
     const removed = buildNext(db).removed;
     const removedFams = [...new Set(removed.map((r) => r.family))];
     const unmapped = removedFams.filter((f) => !used.includes(f)); // taken out of this Mapping
-    const moved = removedFams.filter((f) => used.includes(f)); // still mapped, but its Type / Code no longer fits where it's scheduled
+    const moved = removedFams.filter((f) => used.includes(f)); // still mapped, but its Type no longer fits where it's scheduled
     if (usedDrafts.length || removed.length) {
       const draftLine = usedDrafts.length ? (
         <p
@@ -225,7 +214,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
               {moved.length ? (
                 <p
                   style={{ margin: "16px 0 0" }}
-                >{`Moving ${moved.length === 1 ? "this Product Family" : "these Product Families"} to Type ${type}${code ? ", Code " + code : ""} will also remove ${moved.length === 1 ? "it" : "them"} from Schedule.`}</p>
+                >{`Moving ${moved.length === 1 ? "this Product Family" : "these Product Families"} to Type - Code ${type} will also remove ${moved.length === 1 ? "it" : "them"} from Schedule.`}</p>
               ) : null}
               <UndoNote />
             </>
@@ -237,7 +226,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
     }
     setDb((d) => withTabDots(d, buildNext(d).db, fromTab));
     onDone();
-    // Snackbar CTA: Type O rows appear in Schedule > Activity Type; Type T goes to Schedule > Unit.
+    // Snackbar CTA: Type O rows appear in Schedule > Activity Type; Type T/X goes to Schedule > Unit.
     let cta = null;
     if (type === "O") {
       if (
@@ -245,7 +234,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
         category.some((p) => !db.activitySchedules.some((x) => x.activityType === pt && x.category === p))
       )
         cta = { label: "Schedule for Activity Type", onClick: () => openSchedule("activity") };
-    } else if (type === "T") {
+    } else if (type === "T/X") {
       if (!(prefill && prefill.fromSchedule) && used.some((f) => !db.schedules.some((x) => x.family === f)))
         cta = { label: "Schedule for Unit", onClick: () => openSchedule("unit") };
     }
@@ -284,7 +273,6 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
           }}
           getDetail={productsOf}
           allowCreate
-          chipClass={() => `tag-type-${type}`}
           onCreate={(term) => setCreateCtx({ ...createCtxValue, prefill: term })}
           error={errors[`fam:${key}`]}
         />
@@ -311,7 +299,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
           createCtxValue: { category: p },
         }),
       );
-  } else if (type === "T") {
+  } else if (type === "T/X") {
     familySection = familyPicker({
       key: "T",
       legend: "Product Family",
@@ -323,7 +311,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
       },
       createCtxValue: { forT: true },
     });
-  } else if (type === "X") {
+  } else if (type === "X-PREP") {
     familySection = familyPicker({
       key: "X",
       legend: "Product Family",
@@ -346,34 +334,21 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
     <>
       <div className="modal-body">
         <Section>
-          <div className="grid4">
+          <div className="grid3">
             <div className="field">
-              <FieldLabel htmlFor="f-type">Type</FieldLabel>
+              <FieldLabel htmlFor="f-type">Type - Code</FieldLabel>
               <SelectField
                 id="f-type"
-                placeholder="Type"
+                placeholder="Type - Code"
                 value={type}
                 onChange={setType}
                 onClear={() => setType("")}
                 error={errors.type}
                 options={[
-                  { value: "O" },
-                  { value: "T", disabled: tExists, hint: tExists ? "Mapped" : "" },
-                  { value: "X", disabled: xFull, hint: xFull ? "Mapped" : "" },
+                  { value: "O", label: typeCodeLabel("O") },
+                  { value: "T/X", label: typeCodeLabel("T/X"), disabled: txExists, hint: txExists ? "Mapped" : "" },
+                  { value: "X-PREP", label: typeCodeLabel("X-PREP"), disabled: xExists, hint: xExists ? "Mapped" : "" },
                 ]}
-              />
-            </div>
-            <div className="field">
-              <FieldLabel htmlFor="f-code">Code</FieldLabel>
-              <SelectField
-                id="f-code"
-                placeholder="Code"
-                value={code}
-                disabled={codeDisabled}
-                clearable={!xPlainExists}
-                onChange={changeCode}
-                onClear={() => changeCode("")}
-                options={[{ value: "PREP" }]}
               />
             </div>
             <div className="field">

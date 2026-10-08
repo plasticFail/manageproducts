@@ -4,8 +4,9 @@ import { DEFAULT_WINDOW_START, MonthHeader, MonthStepper } from "./MonthNav";
 import { DataGrid, useDb, useUi } from "../components/common";
 import { UNITS, VISIBLE_MONTHS } from "../constants";
 import { useEffect, useRef, useState } from "react";
-import { ScheduleActionsCell, ScheduleCtx, ScheduleFixedCell, ScheduleMonthCell } from "./cells";
-import { fixedPool, unitCellFamilies, pairLabel, activityRowId, activityRows } from "../lib/domain";
+import { ScheduleActionsCell, ScheduleCtx, ScheduleMonthCell } from "./cells";
+import { Dash } from "../components/cells";
+import { unitCellFamilies, pairLabel, activityRowId, activityRows } from "../lib/domain";
 
 export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub }) {
   const { db, setDb } = useDb();
@@ -34,16 +35,11 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
   const months = Array.from({ length: VISIBLE_MONTHS }, (_, i) => monthAt(windowStart + i));
   const tFamilies = unitCellFamilies(db);
   const aRows = activityRows(db);
-  const pool = fixedPool(db);
-  const fixedOptions = pool.families.flatMap((f) => [f, ...pool.products.filter((p) => p.family === f).map((p) => p.name)]); // each Product Family followed by its own Products
-  const productsOf = (fam) => pool.products.filter((p) => p.family === fam).map((p) => p.name);
-  const fixedFamilyOf = (n) => (pool.products.find((p) => p.name === n) || {}).family || "";
-  const fixedKind = (n) => (pool.families.includes(n) ? "family" : "product");
   const savedFor = (rowId, key) =>
     isUnit
       ? db.schedules.filter((s) => s.unit === rowId && s.key === key).map((s) => s.family)
       : db.activitySchedules.filter((s) => activityRowId(s.activityType, s.category) === rowId && s.key === key).map((s) => s.family);
-  const initialDraftFor = (rowId, key) => (key === "__fixed" ? (db.fixed[rowId] || []).map((x) => x.name) : savedFor(rowId, key));
+  const initialDraftFor = (rowId, key) => savedFor(rowId, key);
   const getDraft = (key) => draft[key] ?? initialDraftFor(editing, key);
   const resetEdit = () => {
     setEditing(null);
@@ -65,45 +61,15 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     dirty: Object.keys(draft).length > 0,
     getDraft,
     getSaved: savedFor,
-    getSavedFixed: (rowId) => db.fixed[rowId] || [],
     noFamilies: isUnit && tFamilies.length === 0,
     firstMonthKey: months[0].key,
     createT: () => {
       resumeEditRef.current = { sub, rowId: editing, draft: draftRef.current, committed };
-      openCreateMapping({ type: "T", fromSchedule: true });
+      openCreateMapping({ type: "T/X", fromSchedule: true });
     },
     optionsFor: (row) => (isUnit ? tFamilies : [...(row.families || [])].sort((a, b) => a.localeCompare(b))),
-    emptyText: isUnit ? "No Product Family is mapped to Type T yet." : "No Product Family is mapped to this Activity Type and Category.",
-    fixedOptions,
-    fixedKind,
-    fixedFamilyOf,
-    // Fixed: a Product Family stands for all its Products. Selecting it replaces any of its Products; selecting every Product of a
-    // Product Family collapses them into it; unselecting one Product of a selected Product Family leaves the others as plain Products.
-    partlySelected: (fam) => {
-      const cur = getDraft("__fixed");
-      return !cur.includes(fam) && productsOf(fam).some((x) => cur.includes(x));
-    },
-    expandFixed: (list) => [...new Set(list.flatMap((n) => (fixedKind(n) === "family" ? [n, ...productsOf(n)] : [n])))],
-    toggleDraft: (key, f) =>
-      setDraft((d) => {
-        const cur = d[key] ?? initialDraftFor(editing, key);
-        if (key !== "__fixed") return { ...d, [key]: toggle(cur, f) };
-        let next;
-        if (fixedKind(f) === "product" && pool.whole.includes(fixedFamilyOf(f))) f = fixedFamilyOf(f); // Products of a Type X family stand for the whole family
-        if (fixedKind(f) === "family")
-          next = cur.includes(f) ? cur.filter((x) => x !== f) : [...cur.filter((x) => !productsOf(f).includes(x)), f];
-        else {
-          const fam = fixedFamilyOf(f),
-            sibs = productsOf(fam);
-          if (cur.includes(fam)) next = [...cur.filter((x) => x !== fam), ...sibs.filter((x) => x !== f)];
-          else if (cur.includes(f)) next = cur.filter((x) => x !== f);
-          else {
-            next = [...cur, f];
-            if (sibs.every((x) => next.includes(x))) next = [...next.filter((x) => !sibs.includes(x)), fam];
-          }
-        }
-        return { ...d, [key]: next };
-      }),
+    emptyText: isUnit ? "No Product Family is mapped to Type T/X yet." : "No Product Family is mapped to this Activity Type and Category.",
+    toggleDraft: (key, f) => setDraft((d) => ({ ...d, [key]: toggle(d[key] ?? initialDraftFor(editing, key), f) })),
     clearDraft: (key) => setDraft((d) => ({ ...d, [key]: [] })),
     commitDraft: () =>
       setTimeout(() => {
@@ -114,18 +80,12 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     cancelEdit: resetEdit,
     saveEdit: (row) => {
       const id = row.rowId;
-      const keys = [...new Set([...months.map((mo) => mo.key), ...Object.keys(draft).filter((k) => k !== "__fixed")])];
+      const keys = [...new Set([...months.map((mo) => mo.key), ...Object.keys(draft)])];
       setDb((d) => {
         if (isUnit) {
           const schedules = d.schedules.filter((s) => !(s.unit === id && keys.includes(s.key)));
           keys.forEach((key) => (draft[key] ?? initialDraftFor(id, key)).forEach((f) => schedules.push({ unit: id, key, family: f })));
-          const fixed = { ...d.fixed };
-          if (draft.__fixed) {
-            const items = draft.__fixed.map((n) => ({ kind: fixedKind(n), name: n }));
-            if (items.length) fixed[id] = items;
-            else delete fixed[id];
-          }
-          return { ...d, schedules, fixed, changedUnits: withAdded(d.changedUnits, id) };
+          return { ...d, schedules, changedUnits: withAdded(d.changedUnits, id) };
         }
         const activitySchedules = d.activitySchedules.filter(
           (s) => !(activityRowId(s.activityType, s.category) === id && keys.includes(s.key)),
@@ -186,16 +146,13 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     ? [
         dotCol,
         { field: "unit", headerName: "Unit", width: 100, pinned: "left" },
+        // Read-only label column like Unit: same text style, left aligned.
         {
           colId: "fixed",
-          headerName: "Fixed",
+          headerName: "Fixed Product",
           width: 220,
           pinned: "left",
-          headerClass: "hdr-center",
-          cellClass: "month-cell",
-          cellRenderer: ScheduleFixedCell,
-          cellClassRules: { "cell-editing": (p) => p.data.editing },
-          suppressKeyboardEvent: () => true,
+          cellRenderer: (p) => ((db.fixed[p.data.rowId] || []).map((x) => x.name).join(", ")) || <Dash />,
         },
       ]
     : [
@@ -224,7 +181,7 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
   async function onCellClicked(e) {
     const col = e.colDef.colId || e.colDef.field;
     const row = e.data;
-    if (col === "dot" || col === "unit" || col === "activityType" || col === "category") {
+    if (col === "dot" || col === "unit" || col === "fixed" || col === "activityType" || col === "category") {
       setDb((d) =>
         isUnit
           ? { ...d, changedUnits: without(d.changedUnits, row.rowId) }
