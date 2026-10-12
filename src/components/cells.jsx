@@ -20,9 +20,9 @@ function CategoryCell({ db, m }) {
 export function FamilyCell({ db, m }) {
   if (isCategoryType(m.type)) {
     return (
-      <div>
+      <div className="family-cats">
         {categoryWithFamilies(db, m).map((p) => (
-          <div key={p} className="family-tags-wrap" style={{ marginBottom: 4, alignItems: "center" }}>
+          <div key={p} className="family-tags-wrap" style={{ alignItems: "center" }}>
             <span className="muted cat-label">
               {p}:
             </span>

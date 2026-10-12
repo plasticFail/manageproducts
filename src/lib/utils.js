@@ -32,7 +32,7 @@ export function ownershipLabels(db, familyName, { excludeCategory = null, editin
     if (m.id === editingId || !m.families.includes(familyName)) return;
     if (isCategoryType(m.type)) {
       (m.category || []).forEach((p) => {
-        if (((m.links || {})[p] || []).includes(familyName)) labels.push(`${m.type}, ${m.activityType} · ${p}`);
+        if (((m.links || {})[p] || []).includes(familyName)) labels.push(`${m.type} · ${m.activityType} · ${p}`);
       });
     } else {
       labels.push(typeCodeKey(m));

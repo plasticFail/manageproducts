@@ -671,6 +671,7 @@ const css = `
   .table-chip .MuiChip-deleteIcon, .table-chip .chip-x{ color:${t.muted} !important; }
   .table-chip .chip-x:hover{ color:${t.tableChipInk} !important; }
   .family-tags-wrap{ display:flex; flex-wrap:wrap; gap:4px; }
+  .ag-cell .family-tags-wrap{ row-gap:8px; } .family-cats{ display:flex; flex-direction:column; gap:8px; } /* Mapping table: 8px between Category lines and between wrapped chip rows */
   .cell-tags{ display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-width:110px; }
   /* Schedule month cells: chips and dashes centred under the centred month header */
   .ag-cell.month-cell{ text-align:center; }
