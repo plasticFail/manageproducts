@@ -5,10 +5,13 @@ import { nowStamp, up, withAdded } from "../lib/utils";
 import { pruneSchedule, validateFamily, withTabDots } from "../lib/domain";
 import { snap, useInitialSnapshot } from "../components/EditGrid";
 import { useDb, useUi } from "../components/common";
+import { FIXED_FAMILY } from "../constants";
+import { useDeleteFamily } from "./useDeleteFamily";
 
 export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }) {
   const { db, setDb } = useDb();
   const { notify } = useUi();
+  const deleteFamily = useDeleteFamily();
   const existing = editingName ? db.families.find((f) => f.name === editingName) : null;
   const [name, setName] = useState(editingName || "");
   const [products, setProducts] = useState(existing ? [...existing.products] : [""]);
@@ -21,6 +24,12 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
   }, []);
   const dirty = () => {
     dirtyRef.current = true;
+  };
+  // A Product that is some Unit's Fixed Product cannot be removed here: it names that Unit.
+  const fixedUnitOf = (product) => {
+    const n = up((product || "").trim());
+    if (!existing || !existing.products.includes(n)) return null;
+    return Object.keys(db.fixed || {}).find((u) => (db.fixed[u] || []).some((x) => x.name === n)) || null;
   };
   function save() {
     const res = validateFamily(db.families, name, products, editingName);
@@ -72,6 +81,7 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
           errors={errors}
           setErrors={setErrors}
           dirty={dirty}
+          fixedUnitOf={fixedUnitOf}
         />
       </div>
       <div className="modal-footer">
@@ -81,6 +91,21 @@ export function FamilyForm({ editingName, fromTab, dirtyRef, onDone, onDiscard }
         <Button variant="ghost" onClick={onDiscard}>
           Discard
         </Button>
+        {editingName ? (
+          <Button
+            variant="dangerOutline"
+            className="footer-delete"
+            disabled={editingName === FIXED_FAMILY}
+            onClick={async () => {
+              if (await deleteFamily(editingName)) {
+                dirtyRef.current = false;
+                onDone();
+              }
+            }}
+          >
+            Delete
+          </Button>
+        ) : null}
       </div>
     </>
   );

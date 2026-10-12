@@ -1,5 +1,8 @@
+import ArrowDownwardOutlined from "@mui/icons-material/ArrowDownwardOutlined";
+import ArrowUpwardOutlined from "@mui/icons-material/ArrowUpwardOutlined";
 import { Chip } from "@mui/material";
-import { isCategoryType } from "../lib/utils";
+import { useState } from "react";
+import { formatDate, isCategoryType } from "../lib/utils";
 
 // Table chip: one fill for every Product Family (no Type colours).
 export function FamilyTag({ name, variant = "tag", ...rest }) {
@@ -39,3 +42,24 @@ export function FamilyCell({ db, m }) {
     </div>
   );
 }
+// "Created" / "Last Updated" headers: click to sort by that date. The arrow marks the active sort: down = newest first (default on Created), up = oldest first.
+export function useDateSort() {
+  const [sort, setSort] = useState({ key: "createdAt", dir: "desc" });
+  const onSort = (key) => setSort((s) => (s.key === key ? { key, dir: s.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" }));
+  const sortRows = (rows) => [...rows].sort((a, b) => (new Date(a[sort.key]) - new Date(b[sort.key])) * (sort.dir === "desc" ? -1 : 1));
+  return { sort, onSort, sortRows };
+}
+export const SortHeader = (p) => {
+  const active = p.sort.key === p.field;
+  const Arrow = p.sort.dir === "desc" ? ArrowDownwardOutlined : ArrowUpwardOutlined;
+  return (
+    <button type="button" className="sort-hdr" onClick={() => p.onSort(p.field)} title={active ? (p.sort.dir === "desc" ? "Sorted newest first" : "Sorted oldest first") : "Sort by " + p.displayName}>
+      {p.displayName}
+      {active ? <Arrow fontSize="inherit" /> : null}
+    </button>
+  );
+};
+export const sortCols = (sort, onSort) => [
+  { field: "createdAt", headerName: "Created" },
+  { field: "updatedAt", headerName: "Last Updated" },
+].map((c) => ({ ...c, width: 170, headerComponent: SortHeader, headerComponentParams: { field: c.field, sort, onSort }, valueFormatter: (p) => formatDate(p.value) }));

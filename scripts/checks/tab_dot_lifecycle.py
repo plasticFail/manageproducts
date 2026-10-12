@@ -19,7 +19,7 @@ async def main():
         await pg.locator('#f-category').click(); await pg.locator('li[role=option]').first.click(); await pg.keyboard.press("Escape")
         await pg.wait_for_timeout(300)
         await pg.screenshot(path="/tmp/shot_td1.png")
-        await pg.locator('[id="fam-Category A"]').click(); await pg.locator('li[role=option]').first.click(); await pg.keyboard.press("Escape")
+        await pg.locator('[id="fam-Category A"]').click(); await pg.locator('li[role=option]:not([aria-disabled=true])').first.click(); await pg.keyboard.press("Escape")
         await pg.get_by_role("button", name="Create", exact=True).click()
         await pg.wait_for_timeout(700)
         for i in range(2):

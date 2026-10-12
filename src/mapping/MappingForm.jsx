@@ -8,10 +8,12 @@ import { RemovedSchedulePreview, UndoNote } from "../components/previews";
 import { isCategoryType, nowStamp, ownershipLabels, productTextList, toggle, typeCodeKey, typeCodeLabel, withAdded, without } from "../lib/utils";
 import { activityRows, pruneSchedule, validateFamily, withTabDots } from "../lib/domain";
 import { snap, useInitialSnapshot } from "../components/EditGrid";
+import { useDeleteMapping } from "./useDeleteMapping";
 
 export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onDiscard }) {
   const { db, setDb } = useDb();
   const { confirm, notify, openSchedule } = useUi();
+  const deleteMapping = useDeleteMapping();
   const m = editingId ? db.mappings.find((x) => x.id === editingId) : null;
   const [type, setTypeRaw] = useState(m ? typeCodeKey(m) : (prefill && prefill.type) || "");
   const [pt, setPt] = useState(m ? m.activityType || "" : "");
@@ -254,7 +256,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
           : removedPart
             ? `Mapping updated and ${removedPart}.`
             : "Mapping updated.";
-    notify(done, cta);
+    notify(done, cta, !m && type === "O" ? 8000 : null); // a newly created Type O Mapping: 8 s
   }
   function familyPicker({ key, legend, value, onToggle, onClear, exclude = null, activityType, createCtxValue, isSingle = false }) {
     return (
@@ -399,6 +401,20 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
         <Button variant="ghost" onClick={onDiscard}>
           Discard
         </Button>
+        {m ? (
+          <Button
+            variant="dangerOutline"
+            className="footer-delete"
+            onClick={async () => {
+              if (await deleteMapping(editingId)) {
+                dirtyRef.current = false;
+                onDone();
+              }
+            }}
+          >
+            Delete
+          </Button>
+        ) : null}
       </div>
       <CreateFamilyDialog ctx={createCtx} onCancel={() => setCreateCtx(null)} onSave={saveDraft} />
     </>

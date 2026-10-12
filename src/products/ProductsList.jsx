@@ -1,88 +1,25 @@
 import { Button, IconButton } from "@mui/material";
 import { DataGrid, useDb, useUi } from "../components/common";
-import { DeleteFamilyPreview, UndoNote } from "../components/previews";
+import { useDeleteFamily } from "./useDeleteFamily";
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
+import { sortCols, useDateSort } from "../components/cells";
 import { useMemo } from "react";
 import { FIXED_FAMILY } from "../constants";
-import { formatDate, isCategoryType, productTextList, without } from "../lib/utils";
-import { pruneSchedule, scheduleUsage } from "../lib/domain";
+import { productTextList, without } from "../lib/utils";
 
 export function ProductsList({ search, onCreate, onEdit }) {
   const { db, setDb } = useDb();
-  const { confirm, notify, access } = useUi();
+  const { access } = useUi();
+  const onDelete = useDeleteFamily();
+  const { sort, onSort, sortRows } = useDateSort();
   const canEdit = access.products; // view only: no Create Product Family, no Actions column
-  async function onDelete(name) {
-    const inMapping = db.mappings.some((m) => m.families.includes(name));
-    const scheduled = scheduleUsage(db, [name]).length > 0;
-    const mapped = inMapping || scheduled;
-    let body,
-      confirmLabel = "Delete",
-      emptiedCount = 0;
-    if (mapped) {
-      // Mappings left with no Product Family are deleted as a whole row.
-      emptiedCount = db.mappings.filter((m) => m.families.length === 1 && m.families[0] === name).length;
-      const where = inMapping && scheduled ? "Mapping and Schedule" : inMapping ? "Mapping" : "Schedule";
-      body = (
-        <>
-          <DeleteFamilyPreview db={db} name={name} />
-          <p style={{ margin: "16px 0 0" }}>{`Deleting this Product Family will also remove it from ${where}.`}</p>
-          {emptiedCount ? (
-            <p style={{ margin: "16px 0 0" }}>
-              {emptiedCount === 1
-                ? "Its Mapping has no other Product Family, so the whole Mapping will be deleted."
-                : "Its Mappings have no other Product Family, so they will be deleted."}
-            </p>
-          ) : null}
-        </>
-      );
-    } else {
-      body = null;
-    }
-    const ok = await confirm(
-      <>
-        {body}
-        <UndoNote />
-      </>,
-      { title: `Delete ${name}`, confirmLabel, destructive: true },
-    );
-    if (!ok) return;
-    setDb((d) => {
-      let mappings = d.mappings.map((m) => {
-        if (!m.families.includes(name)) return m;
-        if (!isCategoryType(m.type)) return { ...m, families: without(m.families, name) };
-        const linked = Object.fromEntries(Object.entries(m.links || {}).map(([p, arr]) => [p, without(arr, name)]));
-        const category = (m.category || []).filter((p) => (linked[p] || []).length > 0);
-        return { ...m, category, links: Object.fromEntries(category.map((p) => [p, linked[p]])), families: without(m.families, name) };
-      });
-      const emptied = mappings.filter((m) => m.families.length === 0).map((m) => m.id);
-      mappings = mappings.filter((m) => m.families.length > 0);
-      return pruneSchedule({
-        ...d,
-        mappings,
-        changedMappings: d.changedMappings.filter((id) => !emptied.includes(id)),
-        families: d.families.filter((f) => f.name !== name),
-        changedFamilies: without(d.changedFamilies, name),
-      }).db;
-    });
-    notify(
-      inMapping && scheduled
-        ? "Product Family deleted and removed from Mapping and Schedule"
-        : inMapping
-          ? "Product Family deleted and removed from Mapping"
-          : scheduled
-            ? "Product Family deleted and removed from Schedule"
-            : "Product Family deleted",
-    );
-  }
   const term = search.trim().toLowerCase();
-  const rows = (
+  const rows = sortRows(
     term
       ? db.families.filter((f) => f.name.toLowerCase().includes(term) || f.products.some((p) => p.toLowerCase().includes(term)))
-      : db.families
-  )
-    .slice()
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      : db.families,
+  );
   const columnDefs = useMemo(
     () => [
       {
@@ -91,8 +28,7 @@ export function ProductsList({ search, onCreate, onEdit }) {
         width: 36,
         cellRenderer: (p) => (db.changedFamilies.includes(p.data.name) ? <span className="row-dot" /> : null),
       },
-      { field: "createdAt", headerName: "Created", width: 170, valueFormatter: (p) => formatDate(p.value) },
-      { field: "updatedAt", headerName: "Last Updated", width: 170, valueFormatter: (p) => formatDate(p.value) },
+      ...sortCols(sort, onSort),
       { field: "name", headerName: "Product Family", width: 160 },
       { colId: "products", headerName: "Products", flex: 1, minWidth: 200, valueGetter: (p) => productTextList(p.data.products) },
       ...(canEdit
@@ -120,7 +56,7 @@ export function ProductsList({ search, onCreate, onEdit }) {
           ]
         : []),
     ],
-    [db, canEdit],
+    [db, canEdit, sort],
   );
   return (
     <>
@@ -129,7 +65,7 @@ export function ProductsList({ search, onCreate, onEdit }) {
           <div className="list-empty">{canEdit ? "No results found. Start by creating a Product Family" : "No results found."}</div>
         ) : (
           <DataGrid
-            className="grid-wrap list-grid"
+            className={"grid-wrap list-grid" + (canEdit ? " row-link" : "")}
             rowData={rows}
             getRowId={(p) => p.data.name}
             columnDefs={columnDefs}
@@ -137,6 +73,7 @@ export function ProductsList({ search, onCreate, onEdit }) {
             onRowClicked={(e) => {
               if (e.event && e.event.target.closest(".icon-action")) return;
               setDb((d) => ({ ...d, changedFamilies: without(d.changedFamilies, e.data.name) }));
+              if (canEdit) onEdit(e.data.name);
             }}
           />
         )}

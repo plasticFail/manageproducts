@@ -1,13 +1,13 @@
-import { Dash, FamilyCell, FamilyTag } from "./cells";
+import { Dash, FamilyCell, FamilyTag, sortCols } from "./cells";
 import { DataGrid } from "./common";
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import { IconButton } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { scheduleUsage } from "../lib/domain";
-import { formatDate, isCategoryType, typeCodeKey, typeCodeLabel } from "../lib/utils";
+import { isCategoryType, typeCodeKey, typeCodeLabel } from "../lib/utils";
 
-export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = false }) {
+export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = false, sort, onSort }) {
   const cols = [];
   if (withMeta) {
     cols.push(
@@ -17,8 +17,7 @@ export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = fals
         width: 36,
         cellRenderer: (p) => (db.changedMappings.includes(p.data.id) ? <span className="row-dot" /> : null),
       },
-      { field: "createdAt", headerName: "Created", width: 170, valueFormatter: (p) => formatDate(p.value) },
-      { field: "updatedAt", headerName: "Last Updated", width: 170, valueFormatter: (p) => formatDate(p.value) },
+      ...sortCols(sort, onSort),
     );
   }
   cols.push(

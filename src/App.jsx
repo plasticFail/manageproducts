@@ -44,7 +44,7 @@ function Workspace({ persona, db, setDb }) {
     setConfirmState((s) => (s ? { ...s, open: false } : s));
   };
   const [snack, setSnack] = useState({ open: false, message: "", action: null, n: 0 });
-  // Snackbar duration: min 5 s, grows with message length, max 10 s; with an action at least 8 s; callers can force a duration.
+  // Snackbar duration: min 5 s (Type O Mapping created: 8 s), grows with message length, max 10 s; with an action at least 8 s; callers can force a duration.
   const notify = useCallback(
     (message, action = null, duration = null) => setSnack((s) => ({ open: true, message, action, duration, n: s.n + 1 })),
     [],

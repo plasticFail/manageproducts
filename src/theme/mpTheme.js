@@ -189,7 +189,7 @@ const mui = {
           style: {
             background: "transparent",
             color: t.danger,
-            border: `1px solid rgba(243,89,98,0.5)`,
+            border: `1px solid ${t.danger}`, // outlined red/400
             padding: "5px 15px",
             "&:hover": { background: t.destructiveTint, borderColor: t.danger },
             "&.Mui-disabled": { color: t.disabled, borderColor: t.borderSoft },
@@ -615,6 +615,11 @@ const css = `
   .ag-row{ cursor:pointer; }
   .ag-row .icon-action.Mui-disabled{ pointer-events:auto; cursor:default; } /* a disabled action keeps the default cursor, not the row's pointer */
   .ag-row .icon-action.Mui-disabled:hover{ background:transparent; }
+  /* Rows that open an edit view on click: every cell's text goes cyan/400 and underlined on hover (not the open Schedule row, not the Actions or dot cells) */
+  /* Not the Mapping Product Family column ("Category A:" labels and chips stay as they are) */
+  .row-link .ag-row.ag-row-hover:not(.row-editing) .ag-cell:not([col-id=actions]):not([col-id=dot]):not([col-id=families]) *{ color:${P.cyan400} !important; text-decoration:underline; }
+  .modal-footer .footer-delete{ order:-1; margin-right:auto; } /* Delete sits at the far left of the form, apart from Update / Discard */
+  .remove-locked{ display:inline-flex; }
   .ag-row.row-dirty, .ag-row.row-dirty.ag-row-hover{ background-color:var(--row-dirty) !important; }
   .ag-row.row-dirty .ag-cell{ background-color:var(--row-dirty); }
   /* Schedule month headers (custom header component): label centred; Prev / Next sit on the outer edges */
@@ -647,6 +652,8 @@ const css = `
   .sched-grid .ag-root-wrapper, .sched-grid .ag-body, .sched-grid .ag-body-viewport, .sched-grid .ag-center-cols-viewport{ background-color:${P.grey950}; }
   /* List with no records yet (e.g. Mapping tab with no Mappings): grey/950 panel filling the body, ending 48px above the footer CTA */
   .span-empty{ position:absolute; top:0; right:0; bottom:0; left:0; display:flex; align-items:center; justify-content:center; font-size:14px; text-align:center; } /* centred both ways in the spanned cell */
+  .sort-hdr{ display:inline-flex; align-items:center; gap:8px; background:none; border:0; padding:0; margin:0; font:inherit; color:inherit; cursor:pointer; } /* Created / Last Updated: click to sort; arrow 8px right of the label (down = newest first, up = oldest first) */
+  .sort-hdr .MuiSvgIcon-root{ font-size:16px; }
   .text-link{ background:none; border:0; padding:0; margin:0; font:inherit; color:#00DCFF; cursor:pointer; text-decoration:none; }
   .text-link:hover, .text-link:focus-visible{ text-decoration:underline; }
   .list-empty{ flex:1; min-height:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:16px; background:${P.grey950}; border-radius:${t.radius}px; color:${t.text}; font-size:14px; }

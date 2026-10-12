@@ -1,5 +1,5 @@
 import Add from "@mui/icons-material/Add";
-import { Button, Dialog, IconButton, InputAdornment, TextField } from "@mui/material";
+import { Button, Dialog, IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { CancelOutlined } from "../components/icons";
 import Close from "@mui/icons-material/Close";
 import { EditGrid, ErrorFlag, snap } from "../components/EditGrid";
@@ -7,7 +7,7 @@ import { FieldLabel, Section } from "../components/common";
 import { useEffect, useState } from "react";
 import { up } from "../lib/utils";
 
-export function FamilyFields({ idPrefix, name, setName, products, setProducts, errors, setErrors, dirty = () => {}, rowsClassName }) {
+export function FamilyFields({ idPrefix, name, setName, products, setProducts, errors, setErrors, dirty = () => {}, rowsClassName, fixedUnitOf = () => null }) {
   const perRow = errors.products || {};
   const clearProductErrors = () => {
     if (errors.products) setErrors({ ...errors, products: void 0 });
@@ -72,7 +72,15 @@ export function FamilyFields({ idPrefix, name, setName, products, setProducts, e
             />
           )}
           renderRemove={(i) =>
-            products.length > 1 ? (
+            fixedUnitOf(products[i]) ? (
+              <Tooltip title={`Fixed for ${fixedUnitOf(products[i])} Unit`} placement="bottom" classes={{ tooltip: "tip-light" }}>
+                <span className="remove-locked">
+                  <IconButton className="icon-action row-remove" disabled aria-label="Remove product">
+                    <CancelOutlined />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            ) : products.length > 1 ? (
               <IconButton
                 className="icon-action row-remove"
                 title="Remove product"
