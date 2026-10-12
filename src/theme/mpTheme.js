@@ -665,6 +665,7 @@ const css = `
   .muted{ color:var(--muted); }
   .error{ color:var(--danger); font-size:12px; margin-top:6px; }
 
+  .ag-cell .table-chip{ font-size:14px; } .ag-cell .table-chip .MuiChip-label{ line-height:18px; } .ag-cell .cat-label{ font-size:14px; line-height:18px; } /* table chips and Category labels: 14px / 18px */
   .table-chip{ background:${t.tableChipBg} !important; border-color:${t.tableChipBg} !important; color:${t.tableChipInk} !important; }
   .multi-chip.MuiChip-root{ background:rgba(255,255,255,0.16); border-color:transparent; color:${t.text}; }
   .table-chip .MuiChip-deleteIcon, .table-chip .chip-x{ color:${t.muted} !important; }

@@ -23,7 +23,7 @@ export function FamilyCell({ db, m }) {
       <div>
         {categoryWithFamilies(db, m).map((p) => (
           <div key={p} className="family-tags-wrap" style={{ marginBottom: 4, alignItems: "center" }}>
-            <span className="muted" style={{ fontSize: 11 }}>
+            <span className="muted cat-label">
               {p}:
             </span>
             {m.links[p].map((f) => (

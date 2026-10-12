@@ -1,7 +1,7 @@
 import { Button } from "@mui/material";
 import { CreateFamilyDialog } from "../products/FamilyFields";
 import { FieldLabel, Section, useDb, useUi } from "../components/common";
-import { CATEGORY_BY_ACTIVITY_TYPE, ACTIVITY_TYPES } from "../constants";
+import { CATEGORY_BY_ACTIVITY_TYPE, ACTIVITY_TYPES, FIXED_FAMILY } from "../constants";
 import { PickerField, SelectField } from "../components/PickerField";
 import { useEffect, useState } from "react";
 import { RemovedSchedulePreview, UndoNote } from "../components/previews";
@@ -268,8 +268,9 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
           single={isSingle}
           onToggle={onToggle}
           onClear={onClear}
-          getDisabled={(f) => owners(f, exclude, activityType).length > 0}
+          getDisabled={(f) => f === FIXED_FAMILY || owners(f, exclude, activityType).length > 0}
           getSub={(f) => {
+            if (f === FIXED_FAMILY) return "Mapped to respective units"; // Fixed Products belong to their Units, never to a Mapping
             const o = owners(f, exclude, activityType);
             return o.length ? `Mapped to: ${o.join(", ")}` : "";
           }}
