@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { scheduleUsage } from "../lib/domain";
 import { formatDate, isCategoryType, typeCodeKey, typeCodeLabel } from "../lib/utils";
 
-export function mappingColumns(db, { withMeta, onEdit, onDelete }) {
+export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = false }) {
   const cols = [];
   if (withMeta) {
     cols.push(
@@ -26,7 +26,7 @@ export function mappingColumns(db, { withMeta, onEdit, onDelete }) {
     { field: "activityType", headerName: "Activity Type", width: 150, cellRenderer: (p) => p.value || <Dash /> },
     { colId: "families", headerName: "Product Family", flex: 1, minWidth: 200, cellRenderer: (p) => <FamilyCell db={db} m={p.data} /> },
   );
-  if (withMeta) {
+  if (withMeta && !readOnly) {
     cols.push({
       colId: "actions",
       headerName: "Actions",

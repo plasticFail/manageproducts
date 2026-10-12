@@ -7,7 +7,8 @@ import { typeCodeKey, typeCodeLabel, without } from "../lib/utils";
 
 export function MappingList({ search, filter, setFilter, onCreate, onEdit }) {
   const { db, setDb } = useDb();
-  const { confirm, notify } = useUi();
+  const { confirm, notify, access } = useUi();
+  const canEdit = access.mapping; // view only: no Create Mapping, no Actions column
   const rows = useMemo(() => {
     const byType = filter === "All" ? db.mappings : db.mappings.filter((m) => typeCodeKey(m) === filter);
     const term = search.trim().toLowerCase();
@@ -40,12 +41,12 @@ export function MappingList({ search, filter, setFilter, onCreate, onEdit }) {
     setDb((d) => pruneSchedule(afterDelete(d)).db);
     notify(removed.length ? "Mapping deleted and removed from Schedule" : "Mapping deleted");
   }
-  const columnDefs = useMemo(() => mappingColumns(db, { withMeta: true, onEdit, onDelete }), [db]);
+  const columnDefs = useMemo(() => mappingColumns(db, { withMeta: true, onEdit, onDelete, readOnly: !canEdit }), [db, canEdit]);
   return (
     <>
       <div className="modal-body grid-body">
         {db.mappings.length === 0 ? (
-          <div className="list-empty">No results found. Start by creating a Mapping</div>
+          <div className="list-empty">{canEdit ? "No results found. Start by creating a Mapping" : "No results found."}</div>
         ) : (
           <DataGrid
             className="grid-wrap list-grid"
@@ -60,11 +61,13 @@ export function MappingList({ search, filter, setFilter, onCreate, onEdit }) {
           />
         )}
       </div>
-      <div className="modal-footer">
-        <Button variant="primary" onClick={onCreate}>
-          Create Mapping
-        </Button>
-      </div>
+      {canEdit ? (
+        <div className="modal-footer">
+          <Button variant="primary" onClick={onCreate}>
+            Create Mapping
+          </Button>
+        </div>
+      ) : null}
     </>
   );
 }

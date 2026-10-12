@@ -21,16 +21,14 @@ import { MappingList } from "./mapping/MappingList";
 import { ProductsList } from "./products/ProductsList";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ScheduleGrid } from "./schedule/ScheduleGrid";
+import { PERSONAS } from "./constants";
 import { theme } from "./theme/index";
 
 const isListView = (v) => ["mappingList", "scheduleGrid", "productsList"].includes(v.name);
 const LIST_VIEW = { mapping: { name: "mappingList" }, schedule: { name: "scheduleGrid" }, products: { name: "productsList" } };
 const SEARCH_PLACEHOLDER = { mapping: "Search Mapping\u2026", schedule: "Search Schedule\u2026", products: "Search\u2026" };
-export default function App() {
-  const [preset, setPreset] = useState(
-    () => ({ empty: "empty", blank: "blank" })[new URLSearchParams(location.search).get("data")] || "full",
-  );
-  const [db, setDb] = useState(() => initialDb(preset));
+// One Manage Products window for one persona. The data (db) and its preset live in App, so every persona sees the same data.
+function Workspace({ persona, db, setDb }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("mapping");
   const [view, setView] = useState(LIST_VIEW.mapping);
@@ -180,9 +178,11 @@ export default function App() {
       break;
   }
   return (
-    <ThemeProvider theme={theme}>
+    <>
       <DbContext.Provider value={{ db, setDb }}>
-        <UiContext.Provider value={{ confirm, notify, openSchedule, openCreateMapping, guardRowEdit, rowEditRef, resumeEditRef }}>
+        <UiContext.Provider
+          value={{ confirm, notify, openSchedule, openCreateMapping, guardRowEdit, rowEditRef, resumeEditRef, access: persona.access }}
+        >
           <div className="wrap">
             <Button
               variant="launcher"
@@ -194,40 +194,6 @@ export default function App() {
             >
               Manage Products
             </Button>
-            <div className="hint">Opens the tool for mappings, scheduling Units and Activity Types, and Product Family/Product data.</div>
-            <div className="preset">
-              <div className="preset-label" id="preset-label">
-                Start with
-              </div>
-              <ToggleButtonGroup
-                exclusive
-                className="segmented"
-                aria-labelledby="preset-label"
-                value={preset}
-                onChange={(e, v) => {
-                  if (!v || v === preset) return;
-                  setPreset(v);
-                  setDb(initialDb(v));
-                  setSearch({ mapping: "", schedule: "", products: "" });
-                  setMappingFilter("All");
-                  setWindowStart(DEFAULT_WINDOW_START);
-                  setScheduleSub("unit");
-                }}
-              >
-                {DATA_PRESETS.map((o) => (
-                  <ToggleButton key={o.value} value={o.value}>
-                    {o.label}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-              <div className="hint">
-                {preset === "blank"
-                  ? "Nothing yet: no Product Families, Mappings or Schedule."
-                  : preset === "empty"
-                    ? "Product Families only. Mapping and Schedule start empty."
-                    : "Mappings, Schedule and Product Families filled with sample data."}
-              </div>
-            </div>
           </div>
           <Dialog
             open={open}
@@ -319,6 +285,53 @@ export default function App() {
           />
         </UiContext.Provider>
       </DbContext.Provider>
+    </>
+  );
+}
+// Persona tabs: the same data seen by three kinds of people. Switching closes the window; the data stays.
+export default function App() {
+  const [preset, setPreset] = useState(
+    () => ({ empty: "empty", blank: "blank" })[new URLSearchParams(location.search).get("data")] || "full",
+  );
+  const [db, setDb] = useState(() => initialDb(preset));
+  const [personaId, setPersonaId] = useState("A");
+  const [resetN, setResetN] = useState(0); // bumps when the data is reset, so the window starts fresh (search, filter, month)
+  const persona = PERSONAS.find((x) => x.id === personaId);
+  return (
+    <ThemeProvider theme={theme}>
+      <div className="page">
+        <div className="preset">
+          <div className="preset-label" id="preset-label">
+            Start with
+          </div>
+          <ToggleButtonGroup
+            exclusive
+            className="segmented"
+            aria-labelledby="preset-label"
+            value={preset}
+            onChange={(e, v) => {
+              if (!v || v === preset) return;
+              setPreset(v);
+              setDb(initialDb(v));
+              setResetN((n) => n + 1);
+            }}
+          >
+            {DATA_PRESETS.map((o) => (
+              <ToggleButton key={o.value} value={o.value}>
+                {o.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </div>
+        <div className="persona-bar">
+          <Tabs value={personaId} onChange={(e, v) => setPersonaId(v)} aria-label="Persona">
+            {PERSONAS.map((x) => (
+              <Tab key={x.id} value={x.id} label={`${x.label} \u00b7 ${x.role}`} />
+            ))}
+          </Tabs>
+        </div>
+        <Workspace key={`${personaId}-${resetN}`} persona={persona} db={db} setDb={setDb} />
+      </div>
     </ThemeProvider>
   );
 }

@@ -566,8 +566,11 @@ const css = `
   #root{ min-height:100%; display:flex; align-items:center; justify-content:center; padding:32px 16px; }
   .hint{ color:var(--muted); font-size:14px; margin-top:10px; max-width:300px; text-align:center; }
   .wrap{ display:flex; flex-direction:column; align-items:center; }
+  /* Prototype-only persona tabs above the launcher */
+  .page{ display:flex; flex-direction:column; align-items:center; }
+  .persona-bar{ display:flex; flex-direction:column; align-items:center; margin-bottom:48px; }
   /* Prototype-only data preset picker under the launcher */
-  .preset{ display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:40px; }
+  .preset{ display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:48px; }
   .preset-label{ color:var(--muted); font-size:12px; letter-spacing:0.4px; text-transform:uppercase; }
   .preset .segmented .MuiToggleButton-root{ text-transform:none; padding:6px 16px; }
   .preset .hint{ margin-top:0; }
@@ -610,6 +613,8 @@ const css = `
   .ag-row.ag-row-odd.ag-row-hover{ background-color:${t.gridRowEvenHover}; }
   .ag-row.ag-row-selected, .ag-row.ag-row-selected.ag-row-hover{ background-color:${t.gridRowSelected}; }
   .ag-row{ cursor:pointer; }
+  .ag-row .icon-action.Mui-disabled{ pointer-events:auto; cursor:default; } /* a disabled action keeps the default cursor, not the row's pointer */
+  .ag-row .icon-action.Mui-disabled:hover{ background:transparent; }
   .ag-row.row-dirty, .ag-row.row-dirty.ag-row-hover{ background-color:var(--row-dirty) !important; }
   .ag-row.row-dirty .ag-cell{ background-color:var(--row-dirty); }
   /* Schedule month headers (custom header component): label centred; Prev / Next sit on the outer edges */

@@ -4,12 +4,14 @@ import { DeleteFamilyPreview, UndoNote } from "../components/previews";
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import { useMemo } from "react";
+import { FIXED_FAMILY } from "../constants";
 import { formatDate, isCategoryType, productTextList, without } from "../lib/utils";
 import { pruneSchedule, scheduleUsage } from "../lib/domain";
 
 export function ProductsList({ search, onCreate, onEdit }) {
   const { db, setDb } = useDb();
-  const { confirm, notify } = useUi();
+  const { confirm, notify, access } = useUi();
+  const canEdit = access.products; // view only: no Create Product Family, no Actions column
   async function onDelete(name) {
     const inMapping = db.mappings.some((m) => m.families.includes(name));
     const scheduled = scheduleUsage(db, [name]).length > 0;
@@ -93,29 +95,38 @@ export function ProductsList({ search, onCreate, onEdit }) {
       { field: "updatedAt", headerName: "Last Updated", width: 170, valueFormatter: (p) => formatDate(p.value) },
       { field: "name", headerName: "Product Family", width: 160 },
       { colId: "products", headerName: "Products", flex: 1, minWidth: 200, valueGetter: (p) => productTextList(p.data.products) },
-      {
-        colId: "actions",
-        headerName: "Actions",
-        width: 90,
-        cellRenderer: (p) => (
-          <div className="action-cell">
-            <IconButton className="icon-action" title="Edit" onClick={() => onEdit(p.data.name)}>
-              <EditOutlined />
-            </IconButton>
-            <IconButton className="icon-action" title="Delete" onClick={() => onDelete(p.data.name)}>
-              <DeleteOutlined />
-            </IconButton>
-          </div>
-        ),
-      },
+      ...(canEdit
+        ? [
+            {
+              colId: "actions",
+              headerName: "Actions",
+              width: 90,
+              cellRenderer: (p) => (
+                <div className="action-cell">
+                  <IconButton className="icon-action" title="Edit" onClick={() => onEdit(p.data.name)}>
+                    <EditOutlined />
+                  </IconButton>
+                  <IconButton
+                    className="icon-action"
+                    title="Delete"
+                    disabled={p.data.name === FIXED_FAMILY}
+                    onClick={() => onDelete(p.data.name)}
+                  >
+                    <DeleteOutlined />
+                  </IconButton>
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
-    [db],
+    [db, canEdit],
   );
   return (
     <>
       <div className="modal-body grid-body">
         {db.families.length === 0 ? (
-          <div className="list-empty">No results found. Start by creating a Product Family</div>
+          <div className="list-empty">{canEdit ? "No results found. Start by creating a Product Family" : "No results found."}</div>
         ) : (
           <DataGrid
             className="grid-wrap list-grid"
@@ -130,11 +141,13 @@ export function ProductsList({ search, onCreate, onEdit }) {
           />
         )}
       </div>
-      <div className="modal-footer">
-        <Button variant="primary" onClick={onCreate}>
-          Create Product Family
-        </Button>
-      </div>
+      {canEdit ? (
+        <div className="modal-footer">
+          <Button variant="primary" onClick={onCreate}>
+            Create Product Family
+          </Button>
+        </div>
+      ) : null}
     </>
   );
 }

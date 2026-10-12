@@ -2,7 +2,7 @@ import { Button, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { CURRENT_MONTH_KEY, monthAt, toggle, withAdded, without } from "../lib/utils";
 import { DEFAULT_WINDOW_START, MonthHeader, MonthStepper } from "./MonthNav";
 import { DataGrid, useDb, useUi } from "../components/common";
-import { UNITS, VISIBLE_MONTHS } from "../constants";
+import { NO_MAPPING_COPY, UNITS, VISIBLE_MONTHS } from "../constants";
 import { useEffect, useRef, useState } from "react";
 import { ScheduleActionsCell, ScheduleCtx, ScheduleMonthCell } from "./cells";
 import { Dash } from "../components/cells";
@@ -10,7 +10,9 @@ import { unitCellFamilies, pairLabel, activityRowId, activityRows } from "../lib
 
 export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub }) {
   const { db, setDb } = useDb();
-  const { notify, guardRowEdit, rowEditRef, openCreateMapping, resumeEditRef } = useUi();
+  const { notify, guardRowEdit, rowEditRef, openCreateMapping, resumeEditRef, access } = useUi();
+  const canEdit = access.schedule; // otherwise the Schedule is view only: no row editing, no Actions column
+  const canMap = access.mapping; // the empty states link to Create Mapping only for people who can create one
   const isUnit = sub === "unit";
   // Coming back from Create Mapping (started from this row): the row reopens with its unsaved choices.
   const resume = useRef(resumeEditRef.current && resumeEditRef.current.sub === sub ? resumeEditRef.current : null).current;
@@ -63,10 +65,12 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     getSaved: savedFor,
     noFamilies: isUnit && tFamilies.length === 0,
     firstMonthKey: months[0].key,
-    createT: () => {
-      resumeEditRef.current = { sub, rowId: editing, draft: draftRef.current, committed };
-      openCreateMapping({ type: "T/X", fromSchedule: true });
-    },
+    createT: canMap
+      ? () => {
+          resumeEditRef.current = { sub, rowId: editing, draft: draftRef.current, committed };
+          openCreateMapping({ type: "T/X", fromSchedule: true });
+        }
+      : null,
     optionsFor: (row) => (isUnit ? tFamilies : [...(row.families || [])].sort((a, b) => a.localeCompare(b))),
     emptyText: isUnit ? "No Product Family is mapped to Type T/X yet." : "No Product Family is mapped to this Activity Type and Category.",
     toggleDraft: (key, f) => setDraft((d) => ({ ...d, [key]: toggle(d[key] ?? initialDraftFor(editing, key), f) })),
@@ -176,7 +180,7 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
       cellRenderer: ScheduleMonthCell,
       suppressKeyboardEvent: () => true,
     })),
-    { colId: "actions", headerName: "Actions", width: 90, pinned: "right", cellRenderer: ScheduleActionsCell },
+    ...(canEdit ? [{ colId: "actions", headerName: "Actions", width: 90, pinned: "right", cellRenderer: ScheduleActionsCell }] : []),
   ];
   async function onCellClicked(e) {
     const col = e.colDef.colId || e.colDef.field;
@@ -189,7 +193,7 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
       );
       return;
     }
-    if (col === "actions" || editing === row.rowId) return;
+    if (!canEdit || col === "actions" || editing === row.rowId) return;
     if (editing && !(await guardRowEdit())) return;
     setEditing(row.rowId);
     setCommitted(false);
@@ -230,13 +234,17 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
         <div className="modal-body grid-body" style={{ paddingTop: 0 }}>
           {!isUnit && aRows.length === 0 ? (
             <div className="list-empty">
-              <span>
-                {"No results found. Start by creating a Type O Mapping "}
-                <button type="button" className="text-link" onClick={() => openCreateMapping({ type: "O", fromSchedule: true })}>
-                  here
-                </button>
-                .
-              </span>
+              {canMap ? (
+                <span>
+                  {"No results found. Start by creating a Type O Mapping "}
+                  <button type="button" className="text-link" onClick={() => openCreateMapping({ type: "O", fromSchedule: true })}>
+                    here
+                  </button>
+                  .
+                </span>
+              ) : (
+                <span>{NO_MAPPING_COPY.activity}</span>
+              )}
             </div>
           ) : noResults ? (
             <div className="empty">No results found.</div>

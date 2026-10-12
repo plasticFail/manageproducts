@@ -3,8 +3,8 @@ import { Dash, FamilyTag } from "../components/cells";
 import { IconButton } from "@mui/material";
 import { PickerField } from "../components/PickerField";
 import Save from "@mui/icons-material/Save";
+import { NO_MAPPING_COPY } from "../constants";
 import { createContext, useContext } from "react";
-import { typeForFamily } from "../lib/domain";
 import { productTextList } from "../lib/utils";
 
 export const ScheduleCtx = createContext(null);
@@ -19,13 +19,17 @@ export function ScheduleMonthCell(params) {
     if (key !== ctx.firstMonthKey) return null;
     return (
       <div className="span-empty">
-        <span>
-          {"No results found. Start by creating a Type T/X Mapping "}
-          <button type="button" className="text-link" onClick={ctx.createT}>
-            here
-          </button>
-          .
-        </span>
+        {ctx.createT ? (
+          <span>
+            {"No results found. Start by creating a Type T/X Mapping "}
+            <button type="button" className="text-link" onClick={ctx.createT}>
+              here
+            </button>
+            .
+          </span>
+        ) : (
+          <span>{NO_MAPPING_COPY.unit}</span>
+        )}
       </div>
     );
   }
@@ -43,7 +47,6 @@ export function ScheduleMonthCell(params) {
         onToggle={(f) => ctx.toggleDraft(key, f)}
         onClear={() => ctx.clearDraft(key)}
         onCommit={ctx.commitDraft}
-        getSub={(f) => `Type ${typeForFamily(db, f)}`}
         getDetail={(f) => productTextList((db.families.find((x) => x.name === f) || { products: [] }).products)}
       />
     );
