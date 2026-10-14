@@ -28,7 +28,7 @@ const isListView = (v) => ["mappingList", "scheduleGrid", "productsList"].includ
 const LIST_VIEW = { mapping: { name: "mappingList" }, schedule: { name: "scheduleGrid" }, products: { name: "productsList" } };
 const SEARCH_PLACEHOLDER = { mapping: "Search Mapping\u2026", schedule: "Search Schedule\u2026", products: "Search\u2026" };
 // One Manage Products window for one persona. The data (db) and its preset live in App, so every persona sees the same data.
-function Workspace({ persona, db, setDb }) {
+function Workspace({ persona, db, setDb, scheduleMode }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("mapping");
   const [view, setView] = useState(LIST_VIEW.mapping);
@@ -181,7 +181,7 @@ function Workspace({ persona, db, setDb }) {
     <>
       <DbContext.Provider value={{ db, setDb }}>
         <UiContext.Provider
-          value={{ confirm, notify, openSchedule, openCreateMapping, guardRowEdit, rowEditRef, resumeEditRef, access: persona.access }}
+          value={{ confirm, notify, openSchedule, openCreateMapping, guardRowEdit, rowEditRef, resumeEditRef, access: persona.access, scheduleMode }}
         >
           <div className="wrap">
             <Button
@@ -295,11 +295,13 @@ export default function App() {
   );
   const [db, setDb] = useState(() => initialDb(preset));
   const [personaId, setPersonaId] = useState("A");
+  const [scheduleMode, setScheduleMode] = useState("always"); // review switch: Schedule selects always shown ("always", Version 41) or opened by clicking a row ("click")
   const [resetN, setResetN] = useState(0); // bumps when the data is reset, so the window starts fresh (search, filter, month)
   const persona = PERSONAS.find((x) => x.id === personaId);
   return (
     <ThemeProvider theme={theme}>
       <div className="page">
+        <div className="preset-row">
         <div className="preset">
           <div className="preset-label" id="preset-label">
             Start with
@@ -323,6 +325,22 @@ export default function App() {
             ))}
           </ToggleButtonGroup>
         </div>
+        <div className="preset">
+          <div className="preset-label" id="schedule-mode-label">
+            Schedule
+          </div>
+          <ToggleButtonGroup
+            exclusive
+            className="segmented"
+            aria-labelledby="schedule-mode-label"
+            value={scheduleMode}
+            onChange={(e, v) => v && setScheduleMode(v)}
+          >
+            <ToggleButton value="always">Version 41</ToggleButton>
+            <ToggleButton value="click">Click row to edit</ToggleButton>
+          </ToggleButtonGroup>
+        </div>
+        </div>
         <div className="persona-bar">
           <Tabs value={personaId} onChange={(e, v) => setPersonaId(v)} aria-label="Persona">
             {PERSONAS.map((x) => (
@@ -330,7 +348,7 @@ export default function App() {
             ))}
           </Tabs>
         </div>
-        <Workspace key={`${personaId}-${resetN}`} persona={persona} db={db} setDb={setDb} />
+        <Workspace key={`${personaId}-${resetN}`} persona={persona} db={db} setDb={setDb} scheduleMode={scheduleMode} />
       </div>
     </ThemeProvider>
   );

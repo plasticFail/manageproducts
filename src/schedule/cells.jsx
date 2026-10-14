@@ -14,39 +14,40 @@ export function ScheduleMonthCell(params) {
   const { db } = ctx;
   const key = params.colDef.field;
   const row = params.data;
-  if (ctx.editing === row.rowId && ctx.noFamilies) {
-    // No Type T/X Mapping yet: the first month cell spans all six months with one message and the rest stay empty.
+  // No Type T/X Mapping: the select still shows, and its dropdown holds the empty message (with the link to create one for people who can).
+  const emptyText = ctx.noFamilies ? (
+    ctx.createT ? (
+      <span>
+        {"No results found. Start by creating a Type T/X Mapping "}
+        <button type="button" className="text-link" onMouseDown={(e) => e.preventDefault()} onClick={ctx.createT}>
+          here
+        </button>
+        .
+      </span>
+    ) : (
+      NO_MAPPING_COPY.unit
+    )
+  ) : (
+    ctx.emptyText
+  );
+  if (ctx.clickMode && ctx.noFamilies && row.showSelect) {
+    // Click mode with no Type T/X Mapping: the opened row's first month cell spans all six months with the message.
     if (key !== ctx.firstMonthKey) return null;
-    return (
-      <div className="span-empty">
-        {ctx.createT ? (
-          <span>
-            {"No results found. Start by creating a Type T/X Mapping "}
-            <button type="button" className="text-link" onClick={ctx.createT}>
-              here
-            </button>
-            .
-          </span>
-        ) : (
-          <span>{NO_MAPPING_COPY.unit}</span>
-        )}
-      </div>
-    );
+    return <div className="span-empty">{emptyText}</div>;
   }
-  if (ctx.editing === row.rowId) {
+  if (row.showSelect) {
     return (
       <PickerField
         id={`cell-${safeId(row.rowId)}-${key}`}
         options={ctx.optionsFor(row)}
-        value={ctx.getDraft(key)}
-        stack
-        placeholder="Select"
-        emptyText={ctx.emptyText}
-        showCount={false}
-        showChevron={false}
-        onToggle={(f) => ctx.toggleDraft(key, f)}
-        onClear={() => ctx.clearDraft(key)}
-        onCommit={ctx.commitDraft}
+        value={ctx.getDraft(row.rowId, key)}
+        swapCount
+        hideZero={ctx.clickMode}
+        placeholder="—"
+        emptyText={emptyText}
+        onToggle={(f) => ctx.toggleDraft(row.rowId, key, f)}
+        onClear={() => ctx.clearDraft(row.rowId, key)}
+        onCommit={() => ctx.commitDraft(row.rowId)}
         getDetail={(f) => productTextList((db.families.find((x) => x.name === f) || { products: [] }).products)}
       />
     );
@@ -68,18 +69,13 @@ export function ScheduleMonthCell(params) {
 }
 export function ScheduleActionsCell(params) {
   const ctx = useContext(ScheduleCtx);
-  const editing = ctx.editing === params.data.rowId;
+  const dirty = ctx.rowDirty(params.data.rowId);
   return (
     <div className="action-cell">
-      <IconButton className="icon-action icon-cancel" disabled={!editing} onClick={ctx.cancelEdit} title="Cancel">
+      <IconButton className="icon-action icon-cancel" disabled={ctx.clickMode ? ctx.editing !== params.data.rowId : !dirty} onClick={() => ctx.cancelEdit(params.data.rowId)} title="Cancel">
         <Close />
       </IconButton>
-      <IconButton
-        className="icon-action icon-save"
-        disabled={!editing || !ctx.dirty}
-        onClick={() => ctx.saveEdit(params.data)}
-        title="Save"
-      >
+      <IconButton className="icon-action icon-save" disabled={!dirty} onClick={() => ctx.saveEdit(params.data)} title="Save">
         <Save />
       </IconButton>
     </div>

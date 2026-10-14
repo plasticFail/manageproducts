@@ -5,7 +5,7 @@ import EditOutlined from "@mui/icons-material/EditOutlined";
 import { IconButton } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { scheduleUsage } from "../lib/domain";
-import { isCategoryType, typeCodeKey, typeCodeLabel } from "../lib/utils";
+import { isCategoryType, ownershipLabels, typeCodeKey, typeCodeLabel } from "../lib/utils";
 
 export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = false, sort, onSort }) {
   const cols = [];
@@ -113,6 +113,8 @@ const COL_RANK = { where: 1, when: 2, family: 3 };
 const PREVIEW_COL_WIDTH = { when: 200, family: 200 }; // 210 + 200 + 200 stays inside the 620px dialog table
 function previewCols(cols) {
   const sorted = [...cols].sort((a, b) => COL_RANK[a.field || a.colId] - COL_RANK[b.field || b.colId]);
+  // Two columns (e.g. Activity Type · Category + Schedule): share the table width equally so there is space between them.
+  if (sorted.length === 2) return sorted.map(({ width, flex, minWidth, ...c }) => ({ ...c, flex: 1, minWidth: 150 }));
   return sorted.map(({ flex, minWidth, ...c }, i) => {
     const key = c.field || c.colId;
     const width = PREVIEW_COL_WIDTH[key] || c.width;
@@ -128,7 +130,7 @@ export function DeleteMappingPreview({ db, m, removed }) {
       const u = removed.filter((x) => x.family === f);
       return u.length
         ? u.map((x) => ({ family: f, team: team(f), kind: x.kind, where: x.where, when: x.when }))
-        : [{ family: f, team: team(f), kind: null, where: null, when: null }];
+        : [{ family: f, team: team(f), kind: team(f) ? "activity" : null, where: team(f) ? `${m.activityType} \u00B7 ${team(f)}` : null, when: null }];
     })
     .map((r, i) => ({ id: i, ...r }));
   const dash = (p) => p.value || <Dash />;
@@ -140,12 +142,7 @@ export function DeleteMappingPreview({ db, m, removed }) {
         {
           headerName: "Product Family",
           field: "family",
-          cellRenderer: (p) => (
-            <span className="fam-with-team">
-              {p.data.team ? <span className="fam-sched-team">{p.data.team}:</span> : null}
-              <FamilyTag name={p.value} />
-            </span>
-          ),
+          cellRenderer: (p) => <FamilyTag name={p.value} />,
         },
         ...scheduleForCols(rows, m.type === "O" ? "activity" : "unit"),
         { headerName: "Schedule", field: "when", cellRenderer: dash },
@@ -157,31 +154,35 @@ export function DeleteMappingPreview({ db, m, removed }) {
 }
 // Delete Product Family: where the family is used — one row per Schedule entry (or one row if only mapped).
 export function DeleteFamilyPreview({ db, name }) {
-  const maps = db.mappings.filter((m) => m.families.includes(name));
+  // A Product Family is mapped once. With Schedule entries the table carries the Activity Type · Category / Unit, so the line only names the Type ("Mapped to O");
+  // without a table the line keeps the full label ("Mapped to O · Alpha · Category A").
   const usage = scheduleUsage(db, [name]);
-  const rows = (
-    usage.length ? usage.map((u) => ({ kind: u.kind, where: u.where, when: u.when })) : [{ kind: null, where: null, when: null }]
-  ).map((r, i) => ({ id: i, ...r }));
+  const rows = usage.map((u, i) => ({ id: i, kind: u.kind, where: u.where, when: u.when }));
+  const labels = ownershipLabels(db, name)
+    .map((l) => (l.startsWith("O ") || l === "T/X" ? l : typeCodeLabel(l)))
+    .map((l) => (rows.length ? l.split(" \u00B7 ")[0] : l));
   const mapped = db.mappings.find((m) => m.families.includes(name));
   const dash = (p) => p.value || <Dash />;
   return (
     <>
-      {maps.map((m) => (
-        <p key={m.id} style={{ margin: "0 0 16px" }}>
-          {mappingSummary(m)}
-          <span className="param-label">:</span>
+      {labels.length ? (
+        <p style={{ margin: rows.length ? "0 0 16px" : 0 }}>
+          <span className="param-label">Mapped to</span> {[...new Set(labels)].join(", ")}
+          {rows.length ? <span className="param-label">:</span> : null}
         </p>
-      ))}
-      <ScrollPreviewGrid
-        rowData={rows}
-        getRowId={(p) => String(p.data.id)}
-        columnDefs={previewCols([
-          ...scheduleForCols(rows, mapped && mapped.type === "O" ? "activity" : "unit"),
-          { headerName: "Schedule", field: "when", cellRenderer: dash },
-        ])}
-        rowStyle={{ cursor: "default" }}
-        suppressRowHoverHighlight
-      />
+      ) : null}
+      {rows.length ? (
+        <ScrollPreviewGrid
+          rowData={rows}
+          getRowId={(p) => String(p.data.id)}
+          columnDefs={previewCols([
+            ...scheduleForCols(rows, mapped && mapped.type === "O" ? "activity" : "unit"),
+            { headerName: "Schedule", field: "when", cellRenderer: dash },
+          ])}
+          rowStyle={{ cursor: "default" }}
+          suppressRowHoverHighlight
+        />
+      ) : null}
     </>
   );
 }

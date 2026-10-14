@@ -46,6 +46,8 @@ export function PickerField({
   hideTag,
   optionIndent,
   indeterminate,
+  swapCount = false,
+  hideZero = false,
 }) {
   const [inputValue, setInputValue] = useState("");
   const filterOptions = (opts, state) => {
@@ -58,8 +60,10 @@ export function PickerField({
     <Autocomplete
       onBlur={() => onCommit && onCommit()}
       id={id}
+      className={swapCount && inputValue ? "typing" : undefined}
       multiple={!single}
       disableCloseOnSelect={!single}
+      openOnFocus={swapCount}
       disabled={disabled}
       options={options}
       {...(groupBy ? { groupBy } : {})}
@@ -88,7 +92,7 @@ export function PickerField({
         if (opt) onToggle(opt);
       }}
       renderTags={(vals, getTagProps) => (
-        <div className={"msf-tags" + (stack ? " stack" : "")}>
+        <div className={"msf-tags" + (stack ? " stack" : "") + (swapCount ? " wrap" : "")}>
           {vals.map((v, i) => {
             const { key, className, ...tagProps } = getTagProps({ index: i });
             if (hideTag && hideTag(v)) return null;
@@ -137,7 +141,29 @@ export function PickerField({
         );
       }}
       sx={
-        stack
+        swapCount
+          ? {
+              // Schedule cell: chips left (wrapping), then one group on the right: the 32px counter (or the Clear X in its place while the field is active) and the chevron
+              // No border of its own: the white line under each month cell is drawn by the cell (see .month-cell.cell-editing)
+              "& .MuiOutlinedInput-notchedOutline": { border: "0 !important" },
+              "& .MuiAutocomplete-inputRoot": { flexWrap: "nowrap", alignItems: "center", gap: 0, paddingLeft: "8px !important", paddingRight: "4px !important" },
+              "& .MuiAutocomplete-endAdornment": { gap: "4px" },
+              // The month cell is the field: no left / right / top border, only a white bottom border (accent, 2px while active)
+              "& .MuiOutlinedInput-root": { borderRadius: 0, background: "transparent", minHeight: 40 },
+              "& .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline, & .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+                borderWidth: "0 0 1px 0",
+                borderColor: "#FFFFFF",
+              },
+              "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderWidth: "0 0 2px 0", borderColor: "var(--accent)" },
+              "& .count-chip": { width: 32, height: 32, marginLeft: "auto", marginRight: "4px", fontSize: 14, borderRadius: "4px" },
+              "& .msf-tags": { marginRight: "4px" },
+              // Typing shows the Clear X (no counter); otherwise the counter shows the number of chips
+              "&.typing .count-chip": { display: "none" },
+              "& .MuiAutocomplete-clearIndicator": { display: "none" },
+              "& .typing-x": { width: 32, height: 32, marginLeft: "auto", marginRight: "4px", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, border: 0, background: "transparent", color: "inherit", cursor: "pointer", flexShrink: 0 },
+              ...(value.length ? { "& .MuiAutocomplete-input": { width: "0 !important", minWidth: "0 !important", flex: "0 0 0", padding: "0 !important" }, "&:focus-within .MuiAutocomplete-input": { width: "24px !important", minWidth: "24px !important", flex: "0 0 24px", padding: "0 !important" } } : {}),
+            }
+          : stack
           ? {
               "& .MuiAutocomplete-inputRoot": { flexDirection: "column", alignItems: "stretch" },
               "& .MuiAutocomplete-endAdornment": { alignSelf: "flex-end" },
@@ -158,7 +184,14 @@ export function PickerField({
             endAdornment: (
               <>
                 {inlineError && error ? <ErrorFlag message={error} /> : null}
-                {showCount && !single && value.length > 0 ? <span className="count-chip">{value.length}</span> : null}
+                {swapCount && inputValue ? (
+                  <button type="button" className="typing-x" aria-label="Clear typed text" onMouseDown={(e) => e.preventDefault()} onClick={() => setInputValue("")}>
+                    <Close fontSize="small" />
+                  </button>
+                ) : null}
+                {showCount && !single && (value.length > 0 || (swapCount && !hideZero)) ? (
+                  <span className={"count-chip" + (value.length ? " has-value" : "")}>{value.length}</span>
+                ) : null}
                 {params.InputProps.endAdornment}
               </>
             ),

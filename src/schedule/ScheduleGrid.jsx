@@ -8,23 +8,30 @@ import { ScheduleActionsCell, ScheduleCtx, ScheduleMonthCell } from "./cells";
 import { Dash } from "../components/cells";
 import { unitCellFamilies, pairLabel, activityRowId, activityRows } from "../lib/domain";
 
+const without2 = (o, k) => {
+  const { [k]: _drop, ...rest } = o;
+  return rest;
+};
 export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub }) {
   const { db, setDb } = useDb();
-  const { notify, guardRowEdit, rowEditRef, openCreateMapping, resumeEditRef, access } = useUi();
+  const { notify, guardRowEdit, rowEditRef, openCreateMapping, resumeEditRef, access, scheduleMode } = useUi();
+  // Review switch: "always" = every month shows its select; "click" = rows read as chips and a clicked row opens its selects.
+  const clickMode = scheduleMode === "click";
   const canEdit = access.schedule; // otherwise the Schedule is view only: no row editing, no Actions column
   const canMap = access.mapping; // the empty states link to Create Mapping only for people who can create one
   const isUnit = sub === "unit";
-  // Coming back from Create Mapping (started from this row): the row reopens with its unsaved choices.
+  // Every month of every row shows its select (editable personas). Choices stay a draft per row until that row is saved.
+  // Coming back from Create Mapping (started from the empty dropdown): the unsaved drafts are restored.
   const resume = useRef(resumeEditRef.current && resumeEditRef.current.sub === sub ? resumeEditRef.current : null).current;
-  const [editing, setEditing] = useState(resume ? resume.rowId : null);
-  const [draft, setDraft] = useState(resume ? resume.draft : {});
-  // Row turns #003D54 only once a value has changed AND the user has clicked out of the field.
-  const [committed, setCommitted] = useState(resume ? resume.committed : false);
+  const [drafts, setDrafts] = useState(resume ? resume.drafts : {}); // rowId -> { monthKey: [families] }
+  // A row turns #003D54 only once a value has changed AND the user has clicked out of the field.
+  const [committed, setCommitted] = useState(resume ? resume.committed : {}); // rowId -> bool
+  const [editing, setEditing] = useState(resume ? resume.editing || null : null); // click mode: the open row
   useEffect(() => {
     resumeEditRef.current = null;
   }, []);
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
+  const draftsRef = useRef(drafts);
+  draftsRef.current = drafts;
   // The table stays hidden for its first frame (AG Grid paints flex columns at 200px, then resizes them).
   // "readyFor" names the tab whose grid has been revealed, so a tab switch can never leave a stale flag behind.
   const [readyFor, setReadyFor] = useState(null);
@@ -41,76 +48,81 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     isUnit
       ? db.schedules.filter((s) => s.unit === rowId && s.key === key).map((s) => s.family)
       : db.activitySchedules.filter((s) => activityRowId(s.activityType, s.category) === rowId && s.key === key).map((s) => s.family);
-  const initialDraftFor = (rowId, key) => savedFor(rowId, key);
-  const getDraft = (key) => draft[key] ?? initialDraftFor(editing, key);
-  const resetEdit = () => {
+  const sameList = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+  const getDraft = (rowId, key) => (drafts[rowId] && drafts[rowId][key]) ?? savedFor(rowId, key);
+  const rowDirty = (rowId, from = drafts) => Object.keys(from[rowId] || {}).some((k) => !sameList(from[rowId][k], savedFor(rowId, k)));
+  const anyDirty = Object.keys(drafts).some((id) => rowDirty(id));
+  const resetAll = () => {
+    setDrafts({});
+    setCommitted({});
     setEditing(null);
-    setCommitted(false);
-    setDraft({});
   };
-  // Switching tab or half-year closes any open row.
+  const resetRow = (id) => {
+    setDrafts((d) => without2(d, id));
+    setCommitted((c) => without2(c, id));
+  };
+  // Switching tab or half-year drops any unsaved rows.
   const firstRun = useRef(true);
   useEffect(() => {
     if (firstRun.current) {
       firstRun.current = false;
       if (resume) return;
     }
-    resetEdit();
-  }, [sub, windowStart]);
+    resetAll();
+  }, [sub, windowStart, clickMode]);
   const ctx = {
     db,
+    canEdit,
+    clickMode,
     editing,
-    dirty: Object.keys(draft).length > 0,
+    firstMonthKey: months[0].key,
     getDraft,
     getSaved: savedFor,
+    rowDirty,
     noFamilies: isUnit && tFamilies.length === 0,
-    firstMonthKey: months[0].key,
     createT: canMap
       ? () => {
-          resumeEditRef.current = { sub, rowId: editing, draft: draftRef.current, committed };
+          resumeEditRef.current = { sub, drafts: draftsRef.current, committed, editing };
           openCreateMapping({ type: "T/X", fromSchedule: true });
         }
       : null,
     optionsFor: (row) => (isUnit ? tFamilies : [...(row.families || [])].sort((a, b) => a.localeCompare(b))),
     emptyText: isUnit ? "No Product Family is mapped to Type T/X yet." : "No Product Family is mapped to this Activity Type and Category.",
-    toggleDraft: (key, f) => setDraft((d) => ({ ...d, [key]: toggle(d[key] ?? initialDraftFor(editing, key), f) })),
-    clearDraft: (key) => setDraft((d) => ({ ...d, [key]: [] })),
-    commitDraft: () =>
-      setTimeout(() => {
-        const d = draftRef.current;
-        const same = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
-        setCommitted(Object.keys(d).some((key) => !same(d[key], initialDraftFor(editing, key))));
-      }, 0),
-    cancelEdit: resetEdit,
+    toggleDraft: (rowId, key, f) =>
+      setDrafts((d) => ({ ...d, [rowId]: { ...d[rowId], [key]: toggle((d[rowId] && d[rowId][key]) ?? savedFor(rowId, key), f) } })),
+    clearDraft: (rowId, key) => setDrafts((d) => ({ ...d, [rowId]: { ...d[rowId], [key]: [] } })),
+    commitDraft: (rowId) => setTimeout(() => setCommitted((c) => ({ ...c, [rowId]: rowDirty(rowId, draftsRef.current) })), 0),
+    cancelEdit: (rowId) => {
+      resetRow(rowId);
+      setEditing((e) => (e === rowId ? null : e));
+    },
     saveEdit: (row) => {
       const id = row.rowId;
+      const draft = drafts[id] || {};
       const keys = [...new Set([...months.map((mo) => mo.key), ...Object.keys(draft)])];
       setDb((d) => {
         if (isUnit) {
           const schedules = d.schedules.filter((s) => !(s.unit === id && keys.includes(s.key)));
-          keys.forEach((key) => (draft[key] ?? initialDraftFor(id, key)).forEach((f) => schedules.push({ unit: id, key, family: f })));
+          keys.forEach((key) => (draft[key] ?? savedFor(id, key)).forEach((f) => schedules.push({ unit: id, key, family: f })));
           return { ...d, schedules, changedUnits: withAdded(d.changedUnits, id) };
         }
         const activitySchedules = d.activitySchedules.filter(
           (s) => !(activityRowId(s.activityType, s.category) === id && keys.includes(s.key)),
         );
         keys.forEach((key) =>
-          (draft[key] ?? initialDraftFor(id, key)).forEach((f) =>
+          (draft[key] ?? savedFor(id, key)).forEach((f) =>
             activitySchedules.push({ activityType: row.activityType, category: row.category, key, family: f }),
           ),
         );
         return { ...d, activitySchedules, changedActivityRows: withAdded(d.changedActivityRows, id) };
       });
-      resetEdit();
+      resetRow(id);
+      setEditing(null);
       notify(`Schedule updated for ${isUnit ? id : pairLabel(row.activityType, row.category)}`);
     },
   };
-  // Tell the app whether this row has unsaved changes, so leaving can ask first.
-  const sameList = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
-  rowEditRef.current = {
-    dirty: !!editing && Object.keys(draft).some((k) => !sameList(draft[k], initialDraftFor(editing, k))),
-    cancel: resetEdit,
-  };
+  // Tell the app whether any row has unsaved changes, so leaving can ask first.
+  rowEditRef.current = { dirty: anyDirty, cancel: resetAll };
   useEffect(
     () => () => {
       rowEditRef.current = { dirty: false, cancel: () => {} };
@@ -119,10 +131,10 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
   );
   const term = search.trim().toLowerCase();
   const rowFlags = (id, changedList) => ({
-    editing: editing === id,
-    dirtyFill: editing === id && committed,
+    showSelect: canEdit && (!clickMode || editing === id), // the row shows its selects (otherwise chips)
+    dirtyFill: canEdit && !!committed[id] && rowDirty(id),
     changed: changedList.includes(id),
-    rev: Math.random(),
+    rev: JSON.stringify([drafts[id] || null, !!committed[id], changedList.includes(id), isUnit && tFamilies.length === 0, canEdit, clickMode, editing === id]), // changes only when this row does, so AG Grid refreshes just that row
   });
   const rows = isUnit
     ? UNITS.filter((h) => !db.hiddenUnits.includes(h))
@@ -149,39 +161,43 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
   const labelCols = isUnit
     ? [
         dotCol,
-        { field: "unit", headerName: "Unit", width: 100, pinned: "left" },
+        { field: "unit", headerName: "Unit", width: 80, pinned: "left" },
         // Read-only label column like Unit: same text style, left aligned.
         {
           colId: "fixed",
           headerName: "Fixed Product",
-          width: 220,
+          width: 150,
           pinned: "left",
           cellRenderer: (p) => ((db.fixed[p.data.rowId] || []).map((x) => x.name).join(", ")) || <Dash />,
         },
       ]
     : [
         dotCol,
-        { field: "activityType", headerName: "Activity Type", width: 160, pinned: "left" },
-        { field: "category", headerName: "Category", width: 160, pinned: "left" },
+        { field: "activityType", headerName: "Activity Type", width: 140, pinned: "left" },
+        { field: "category", headerName: "Category", width: 126, pinned: "left" },
       ];
   const columnDefs = [
     ...labelCols,
     ...months.map((mo, mi) => ({
       field: mo.key,
-      colSpan: mi === 0 ? (p) => (isUnit && tFamilies.length === 0 && p.data && p.data.editing ? VISIBLE_MONTHS : 1) : undefined,
       headerName: mo.label,
       flex: 1,
       minWidth: 168,
       cellClass: "month-cell",
+      colSpan: mi === 0 ? (p) => (clickMode && isUnit && tFamilies.length === 0 && p.data && p.data.showSelect ? VISIBLE_MONTHS : 1) : undefined,
       headerComponent: MonthHeader,
       headerComponentParams: { current: mo.key === CURRENT_MONTH_KEY, onPrev: null, onNext: null },
       headerClass: "month-header",
-      cellClassRules: { "cell-editing": (p) => p.data.editing },
+      cellClassRules: {
+        // the spanning "no results" message of an opened row has no select, so no white bottom line
+        "cell-editing": (p) => !!(p.data && p.data.showSelect && !(clickMode && isUnit && tFamilies.length === 0)),
+      },
       cellRenderer: ScheduleMonthCell,
       suppressKeyboardEvent: () => true,
     })),
     ...(canEdit ? [{ colId: "actions", headerName: "Actions", width: 90, pinned: "right", cellRenderer: ScheduleActionsCell }] : []),
   ];
+  // Clicking a label cell clears the row dot. In click mode, clicking any other cell opens that row (asking first if another row has unsaved changes).
   async function onCellClicked(e) {
     const col = e.colDef.colId || e.colDef.field;
     const row = e.data;
@@ -193,11 +209,10 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
       );
       return;
     }
-    if (!canEdit || col === "actions" || editing === row.rowId) return;
+    if (!clickMode || !canEdit || col === "actions" || editing === row.rowId) return;
     if (editing && !(await guardRowEdit())) return;
+    resetAll();
     setEditing(row.rowId);
-    setCommitted(false);
-    setDraft({});
   }
   return (
     <ScheduleCtx.Provider value={ctx}>
@@ -254,6 +269,7 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
               className={"grid-wrap sched-grid" + (gridReady ? "" : " sizing")} // AG Grid first paints flex columns at 200px, then resizes them: keep the grid hidden for that first frame so it doesn't jump.
               onGridSizeChanged={() => !gridReady && reveal()}
               onFirstDataRendered={() => !gridReady && reveal()}
+              rowHeight={48}
               rowData={rows}
               getRowId={(p) => p.data.rowId}
               columnDefs={columnDefs}

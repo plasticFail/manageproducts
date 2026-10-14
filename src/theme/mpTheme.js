@@ -454,11 +454,12 @@ const mui = {
           lineHeight: 1.4,
           background: "transparent",
           border: `1px solid ${t.borderSoft}`,
-          color: "rgba(255,255,255,0.7)",
+          color: "#FDFDFD",
           borderRadius: t.radius,
           padding: "5px 11px",
-          "&:hover": { background: t.hover, color: t.text },
-          "&.Mui-selected, &.Mui-selected:hover": { color: t.accent, background: t.accentTint, borderColor: `${t.borderSoft} !important` },
+          "&:hover": { background: t.hover, color: "#FDFDFD" },
+          // selected: #FDFDFD 16% fill, #FDFDFD 12% border; text stays #FDFDFD
+          "&.Mui-selected, &.Mui-selected:hover": { color: "#FDFDFD", background: "rgba(253,253,253,0.16)", borderColor: "rgba(253,253,253,0.12) !important" },
         },
       },
     },
@@ -570,7 +571,8 @@ const css = `
   .page{ display:flex; flex-direction:column; align-items:center; }
   .persona-bar{ display:flex; flex-direction:column; align-items:center; margin-bottom:48px; }
   /* Prototype-only data preset picker under the launcher */
-  .preset{ display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:48px; }
+  .preset-row{ display:flex; justify-content:center; align-items:flex-start; gap:48px; margin-bottom:48px; }
+  .preset{ display:flex; flex-direction:column; align-items:center; gap:8px; }
   .preset-label{ color:var(--muted); font-size:12px; letter-spacing:0.4px; text-transform:uppercase; }
   .preset .segmented .MuiToggleButton-root{ text-transform:none; padding:6px 16px; }
   .preset .hint{ margin-top:0; }
@@ -759,6 +761,12 @@ const css = `
   /* Schedule cell picker: chips stack one per line and hug their content (not stretched to the field width) */
   .msf-tags.stack{ flex-direction:column; align-items:flex-start; overflow:visible; width:100%; }
   .msf-tags.stack .MuiChip-root{ width:auto; max-width:100%; }
+  .msf-tags.wrap, .ag-cell.month-cell .msf-tags.wrap{ flex:1 1 0; flex-wrap:wrap; gap:4px; overflow:visible; justify-content:flex-start; align-items:flex-start; align-content:center; } /* Schedule cell: chips left-aligned, wrapping */
+  .msf-tags.wrap .MuiChip-root{ justify-content:flex-start; padding-right:4px; }
+  .msf-tags.wrap .multi-chip.MuiChip-root{ background:${t.tableChipBg} !important; } /* Schedule chips stay dark (grey/900) while the select is active; never truncated */
+  .sched-grid .ag-cell.month-cell.cell-editing{ padding:0; }
+  .sched-grid .ag-cell.month-cell.cell-editing{ box-shadow:inset 0 -1px 0 #FFFFFF; } .sched-grid .ag-cell.month-cell.cell-editing:focus-within{ box-shadow:inset 0 0 0 2px ${t.accent}; } /* only a white bottom border per month cell; the whole select gets the accent border while its field is active */
+  .sched-grid .ag-cell.month-cell.cell-editing{ display:flex; align-items:center; } .sched-grid .ag-cell.month-cell.cell-editing .ag-cell-wrapper{ width:100%; } /* a select shorter than its row (fewer chips) centres vertically, so counters line up across the row */
   .msf-clear-x{ color:${t.icon}; font-size:16px !important; }
   .msf-clear-x:hover{ color:var(--destructive); }
   .msf-chevron{ color:${t.icon}; font-size:20px !important; margin-left:2px; }
