@@ -1,23 +1,23 @@
-export const ACTIVITY_TYPES = ["Alpha", "Bravo", "Charlie"];
-export const CATEGORY_LIST = ["Category A", "Category B", "Category C", "Category D"];
-export const CATEGORY_BY_ACTIVITY_TYPE = { Alpha: CATEGORY_LIST, Bravo: CATEGORY_LIST, Charlie: CATEGORY_LIST };
+export const ACTIVITY_TYPES = ["FA", "HA", "Another"];
+export const CATEGORY_LIST = ["H", "F", "U", "T"];
+export const CATEGORY_BY_ACTIVITY_TYPE = { FA: CATEGORY_LIST, HA: CATEGORY_LIST, Another: CATEGORY_LIST };
 export const UNITS = [
-  "123A",
-  "456B",
-  "789C",
-  "234D",
-  "345E",
-  "567F",
-  "678G",
-  "890H",
-  "901J",
-  "112K",
-  "223L",
-  "334M",
-  "445N",
-  "556P",
-  "667Q",
-  "778R",
+  "123",
+  "456",
+  "789",
+  "234",
+  "345",
+  "567",
+  "678",
+  "890",
+  "901",
+  "112",
+  "223",
+  "334",
+  "445",
+  "556",
+  "667",
+  "778",
 ];
 export const VISIBLE_MONTHS = 6;
 // Year (and Month) column width in the Schedule for All Units tables
@@ -39,12 +39,6 @@ export const PERSONAS = [
   {
     id: "B",
     label: "Persona B",
-    role: "Schedule only",
-    access: { mapping: false, schedule: true, products: false },
-  },
-  {
-    id: "C",
-    label: "Persona C",
     role: "View only",
     access: { mapping: false, schedule: false, products: false },
   },

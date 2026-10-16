@@ -59,7 +59,7 @@ const t = {
   bg: P.grey1000, // color-bg (dark) · grey/1000 — page background
   panel: P.grey1000, // product surface (deviation: PRIZM dark surface is grey/900 #2C2C2C) — dialogs
   panel2: P.grey950, // grey/950 — sunken areas
-  menu: P.grey800, // color-surface-alt (dark) · grey/800 — menus, dropdowns (snackbars: grey/900 + grey/800 border)
+  menu: P.grey800, // color-surface-alt (dark) · grey/800 — menus, dropdowns (snackbars: grey/1000 + grey/00 5% border)
   border: "rgba(255,255,255,0.23)", // MUI outlined border on dark — inputs, outlined chips
   borderStrong: "rgba(255,255,255,0.5)", // inherit-white outlined button border
   borderSoft: "rgba(255,255,255,0.12)", // prizm-divider-on-dark — dividers, table row lines, fieldsets
@@ -154,17 +154,17 @@ const mui = {
             "&.Mui-disabled": { background: "rgba(255,255,255,0.12)", color: t.disabled, boxShadow: "none" },
           },
         },
-        // contained · primary · large
+        // outlined · inherit · large
         {
           props: { variant: "launcher" },
           style: {
-            background: t.accent,
-            color: t.ink,
+            background: "transparent",
+            color: t.text,
+            border: `1px solid ${t.borderStrong}`,
             fontSize: 15,
             letterSpacing: "0.46px",
-            padding: "8px 22px",
-            boxShadow: t.elev2,
-            "&:hover": { background: t.accentDark, boxShadow: t.elev4 },
+            padding: "7px 21px",
+            "&:hover": { background: t.hover, borderColor: t.text },
           },
         },
         // outlined · inherit
@@ -466,11 +466,11 @@ const mui = {
     MuiSnackbarContent: {
       styleOverrides: {
         root: {
-          background: P.grey900,
+          background: P.grey1000,
           color: P.grey00,
-          border: "none",
+          border: "1px solid rgba(253,253,253,0.05)",
           padding: "8px 16px",
-          /* product: grey/900 fill, no border, grey/00 text */ borderRadius: t.radius,
+          /* product: grey/1000 #121212 fill, 1px grey/00 5% border, elevation shadow, grey/00 text */ borderRadius: t.radius,
           fontSize: 14,
           minWidth: "0 !important",
           boxShadow: t.elev8,
@@ -530,7 +530,7 @@ const agGrid = {
   headerFontSize: 16,
   headerFontWeight: 600,
   headerHeight: 52,
-  rowHeight: 40, // minimum row height; all product tables here sit in a modal
+  rowHeight: 48, // minimum row height for every table (lists, Schedule, dialog previews)
   fontFamily: t.font,
   fontSize: 16,
   borderColor: t.borderSoft,
@@ -542,7 +542,7 @@ const agGrid = {
   headerColumnResizeHandleColor: "transparent",
   rowHoverColor: "transparent",
   selectedRowBackgroundColor: t.gridRowSelected,
-  cellHorizontalPadding: 12,
+  cellHorizontalPadding: 16, // text starts 16px from the table edge; next to the changed-dot column it starts at 36px
   browserColorScheme: "dark",
 };
 
@@ -600,14 +600,17 @@ const css = `
 
   .grid-wrap{ flex:1; min-height:0; }
   .preview-grid{ width:620px; max-width:100%; margin-top:4px; }
+  /* Confirmation tables: the area below the last row (table with no overflow) shows the placeholder fill #1f1f1f */
+  .preview-grid .ag-root-wrapper, .preview-grid .ag-body, .preview-grid .ag-body-viewport, .preview-grid .ag-center-cols-viewport{ background-color:#1f1f1f; }
 
   /* AG Grid cell content */
-  /* Tables inside a modal: 40px minimum row (agGrid.rowHeight 40; 8 + 22 + 8 padding + 2 cell border). Full-page tables: 52px. */
+  /* Tables inside a modal: 48px minimum row (agGrid.rowHeight 48; 12 + 22 + 12 padding + 2 cell border). */
   .ag-cell{ padding-top:15px; padding-bottom:15px; line-height:22px; }
-  .MuiDialog-paper .ag-cell{ padding-top:8px; padding-bottom:8px; }
+  .MuiDialog-paper .ag-cell{ padding-top:11px; padding-bottom:11px; } /* + 1px cell borders: a one-line row is 48px, chips sit 12px from the top */
   /* Keep icon buttons and chips from stretching 40px rows: same hit area, pulled into the padding */
-  .MuiDialog-paper .ag-cell .MuiIconButton-root{ margin-top:-4px; margin-bottom:-4px; }
-  .MuiDialog-paper .ag-cell .MuiChip-root{ margin-top:-1px; margin-bottom:-1px; }
+  .MuiDialog-paper .ag-cell .MuiIconButton-root{ margin-top:-3px; margin-bottom:-3px; }
+  .MuiDialog-paper .ag-cell .MuiChip-root{ margin-top:0; margin-bottom:0; }
+  .MuiDialog-paper .ag-cell .msf-tags .MuiChip-root{ margin-top:0; margin-bottom:0; } /* chips in an open select wrap with the 4px gap, no pull-in */
   /* Banded rows: counted from 1 (AG Grid's .ag-row-even is the 1st, 3rd, 5th… row) */
   .ag-row.ag-row-even{ background-color:${t.gridRowOdd}; }
   .ag-row.ag-row-even.ag-row-hover{ background-color:${t.gridRowOddHover}; }
@@ -615,11 +618,12 @@ const css = `
   .ag-row.ag-row-odd.ag-row-hover{ background-color:${t.gridRowEvenHover}; }
   .ag-row.ag-row-selected, .ag-row.ag-row-selected.ag-row-hover{ background-color:${t.gridRowSelected}; }
   .ag-row{ cursor:pointer; }
+  .ag-row.row-locked{ cursor:default; } /* FIXED Product Family: no edit, no delete */
   .ag-row .icon-action.Mui-disabled{ pointer-events:auto; cursor:default; } /* a disabled action keeps the default cursor, not the row's pointer */
   .ag-row .icon-action.Mui-disabled:hover{ background:transparent; }
   /* Rows that open an edit view on click: every cell's text goes cyan/400 and underlined on hover (not the open Schedule row, not the Actions or dot cells) */
   /* Not the Mapping Product Family column ("Category A:" labels and chips stay as they are) */
-  .row-link .ag-row.ag-row-hover:not(.row-editing) .ag-cell:not([col-id=actions]):not([col-id=dot]):not([col-id=families]) *{ color:${P.cyan400} !important; text-decoration:underline; }
+  .row-link .ag-row.ag-row-hover:not(.row-editing):not(.row-locked) .ag-cell:not([col-id=actions]):not([col-id=dot]):not([col-id=families]) *{ color:${P.cyan400} !important; text-decoration:underline; }
   .modal-footer .footer-delete{ order:-1; margin-right:auto; } /* Delete sits at the far left of the form, apart from Update / Discard */
   .remove-locked{ display:inline-flex; }
   .ag-row.row-dirty, .ag-row.row-dirty.ag-row-hover{ background-color:var(--row-dirty) !important; }
@@ -673,8 +677,8 @@ const css = `
   .table-chip .MuiChip-deleteIcon, .table-chip .chip-x{ color:${t.muted} !important; }
   .table-chip .chip-x:hover{ color:${t.tableChipInk} !important; }
   .family-tags-wrap{ display:flex; flex-wrap:wrap; gap:4px; }
-  .ag-cell .family-tags-wrap{ row-gap:8px; } .family-cats{ display:flex; flex-direction:column; gap:8px; } /* Mapping table: 8px between Category lines and between wrapped chip rows */
-  .cell-tags{ display:flex; flex-wrap:wrap; gap:4px; align-items:center; min-width:110px; }
+  .ag-cell .family-tags-wrap{ row-gap:8px; } .family-cats{ display:flex; flex-direction:column; gap:8px; } /* Mapping table: 4px between chips, 8px between wrapped chip rows and between Category lines */
+  .cell-tags{ display:flex; flex-wrap:wrap; gap:8px 4px; align-items:center; min-width:110px; } /* chips 4px apart, wrapped rows 8px apart */
   /* Schedule month cells: chips and dashes centred under the centred month header */
   .ag-cell.month-cell{ text-align:center; }
   .ag-cell.month-cell .cell-tags, .ag-cell.month-cell .all-empty{ justify-content:center; }
@@ -691,8 +695,11 @@ const css = `
   /* Hovering any Indefinite chip highlights every Indefinite chip on that Unit's row */
   .ag-row:has(.indefinite-chip:hover) .indefinite-chip{ box-shadow:0 0 0 2px ${P.grey00}; }
   .tab-label{ display:inline-flex; align-items:center; }
-  .tab-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:#00DCFF; margin-left:8px; flex-shrink:0; }
-  .row-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--accent); vertical-align:middle; }
+  .tab-dot{ display:inline-block; width:6px; height:6px; border-radius:50%; background:#00DCFF; margin-left:8px; flex-shrink:0; }
+  /* Changed-dot column: 36px wide, the 6px dot sits 16px from the table edge; the next column has no left padding, so its text starts at 36px */
+  .ag-cell[col-id=dot], .ag-header-cell[col-id=dot]{ padding-right:0; }
+  .ag-cell.after-dot{ padding-left:0; border-left-width:0; } .ag-header-cell.after-dot{ padding-left:0; } /* 36px dot column: the next column's text starts at 36px */
+  .row-dot{ display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); vertical-align:middle; }
   .action-cell{ display:flex; gap:2px; align-items:center; white-space:nowrap; }
   /* Schedule row actions: enabled Cancel is ${P.grey00}, enabled Save is primary cyan */
   .icon-cancel.MuiIconButton-root:not(.Mui-disabled){ color:${P.grey00}; }
@@ -757,11 +764,11 @@ const css = `
     color:var(--text); font-size:12px; margin-left:4px;
   }
   /* Autocomplete (multi-select) internals */
-  .msf-tags{ display:flex; align-items:center; gap:6px; overflow-x:auto; overflow-y:hidden; flex:0 1 auto; min-width:0; } /* never scroll vertically */
+  .msf-tags{ display:flex; align-items:center; gap:8px 4px; overflow-x:auto; overflow-y:hidden; flex:0 1 auto; min-width:0; } /* never scroll vertically */
   /* Schedule cell picker: chips stack one per line and hug their content (not stretched to the field width) */
   .msf-tags.stack{ flex-direction:column; align-items:flex-start; overflow:visible; width:100%; }
   .msf-tags.stack .MuiChip-root{ width:auto; max-width:100%; }
-  .msf-tags.wrap, .ag-cell.month-cell .msf-tags.wrap{ flex:1 1 0; flex-wrap:wrap; gap:4px; overflow:visible; justify-content:flex-start; align-items:flex-start; align-content:center; } /* Schedule cell: chips left-aligned, wrapping */
+  .msf-tags.wrap, .ag-cell.month-cell .msf-tags.wrap{ flex:1 1 0; flex-wrap:wrap; gap:8px 4px; overflow:visible; justify-content:flex-start; align-items:flex-start; align-content:center; } /* Schedule cell: chips left-aligned, wrapping */
   .msf-tags.wrap .MuiChip-root{ justify-content:flex-start; padding-right:4px; }
   .msf-tags.wrap .multi-chip.MuiChip-root{ background:${t.tableChipBg} !important; } /* Schedule chips stay dark (grey/900) while the select is active; never truncated */
   .sched-grid .ag-cell.month-cell.cell-editing{ padding:0; }
@@ -840,10 +847,10 @@ const css = `
   .sched-toolbar .month-range{ line-height:24px; }
   /* Schedule tables: column headers and row headers (Fixed) centred like the months; Unit, Activity Type and Category stay left-aligned */
   .hdr-center .ag-header-cell-label{ justify-content:center; }
-  /* A cell always holds at least one 24px line (chip height), so rows are 40px + multiples of 28px (all multiples of 4) */
+  /* A cell always holds at least one 24px line (chip height), so rows are 48px + multiples of 28px (all multiples of 4) */
   .sched-grid .ag-cell .cell-tags{ min-height:24px; }
   .sched-grid .ag-cell .cell-tags .MuiChip-root{ margin-top:0; margin-bottom:0; } /* chips take their full 24px so stacked rows stay on a 4px multiple */
-  .sched-grid .ag-cell{ padding-top:7px; padding-bottom:7px; } /* + 1px cell borders: a one-chip row is 40px */
+  .sched-grid .ag-cell{ padding-top:11px; padding-bottom:7px; } /* + 1px cell borders: chips sit 12px from the top of the cell and a one-chip row is 48px */
   /* Fixed column: a Product Family is a chip, a Product is plain text (no container) */
   .fixed-tags{ gap:4px 8px; }
   .MuiAutocomplete-listbox .MuiAutocomplete-option.msf-indent{ padding-left:44px; } /* Products under their Product Family in the Fixed picker */
@@ -864,7 +871,7 @@ const css = `
   /* Schedule tab: All Units summary strip above the table */
   .ah-strip{ cursor:default; display:grid; grid-template-columns:146px minmax(0,1fr) 90px; align-items:center; border:1px solid ${P.grey800}; border-bottom:0; border-radius:8px 8px 0 0; background:#1F1F1F; flex-shrink:0; } /* joined to the table; columns match Unit | months | Actions */
   .ah-strip-head{ padding:16px 0 16px 47px; position:relative; } /* "All" lines up with the Unit text */
-  .ah-strip-head .row-dot{ position:absolute; left:14px; top:50%; margin-top:-4px; } /* same spot as the table's changed-dot column */
+  .ah-strip-head .row-dot{ position:absolute; left:16px; top:50%; margin-top:-3px; } /* same spot as the table's changed-dot column */
   .ah-strip-title{ font-size:16px; font-weight:600; line-height:22.4px; display:flex; align-items:center; gap:8px; }
   .ah-groups{ display:flex; align-items:center; justify-content:center; gap:32px; padding:14px 16px; min-width:0; } /* centred over the month columns */
   .ah-group{ flex:0 1 auto; min-width:0; max-width:360px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; } /* label and chips centred within the group */

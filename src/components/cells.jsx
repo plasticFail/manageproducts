@@ -62,4 +62,4 @@ export const SortHeader = (p) => {
 export const sortCols = (sort, onSort) => [
   { field: "createdAt", headerName: "Created" },
   { field: "updatedAt", headerName: "Last Updated" },
-].map((c) => ({ ...c, width: 170, headerComponent: SortHeader, headerComponentParams: { field: c.field, sort, onSort }, valueFormatter: (p) => formatDate(p.value) }));
+].map((c, i) => ({ ...c, ...(i === 0 ? { cellClass: "after-dot", headerClass: "after-dot" } : {}), width: 200, headerComponent: SortHeader, headerComponentParams: { field: c.field, sort, onSort }, valueFormatter: (p) => formatDate(p.value) }));

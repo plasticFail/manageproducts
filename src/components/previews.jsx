@@ -3,9 +3,8 @@ import { DataGrid } from "./common";
 import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
 import EditOutlined from "@mui/icons-material/EditOutlined";
 import { IconButton } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
 import { scheduleUsage } from "../lib/domain";
-import { isCategoryType, ownershipLabels, typeCodeKey, typeCodeLabel } from "../lib/utils";
+import { isCategoryType, typeCodeKey, typeCodeLabel } from "../lib/utils";
 
 export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = false, sort, onSort }) {
   const cols = [];
@@ -21,15 +20,15 @@ export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = fals
     );
   }
   cols.push(
-    { colId: "type", headerName: "Type - Code", width: 220, valueGetter: (p) => typeCodeLabel(typeCodeKey(p.data)) },
-    { field: "activityType", headerName: "Activity Type", width: 150, cellRenderer: (p) => p.value || <Dash /> },
+    { colId: "type", headerName: "Type - Code", width: 240, valueGetter: (p) => typeCodeLabel(typeCodeKey(p.data)) },
+    { field: "activityType", headerName: "Activity Type", width: 160, cellRenderer: (p) => p.value || <Dash /> },
     { colId: "families", headerName: "Product Family", flex: 1, minWidth: 200, cellRenderer: (p) => <FamilyCell db={db} m={p.data} /> },
   );
   if (withMeta && !readOnly) {
     cols.push({
       colId: "actions",
       headerName: "Actions",
-      width: 90,
+      width: 120,
       cellRenderer: (p) => (
         <div className="action-cell">
           <IconButton className="icon-action" title="Edit" onClick={() => onEdit(p.data.id)}>
@@ -58,31 +57,9 @@ function MappingPreview({ db, m }) {
   );
 }
 export const UndoNote = () => <p className="undo-note">This action cannot be undone.</p>;
-// A preview table that grows with its rows up to maxHeight, then scrolls under a fixed header.
+// A confirmation table always has the maximum height (300px): rows scroll under a fixed header once they overflow, and below the last row the table shows the #1f1f1f placeholder fill, even with a single row.
 function ScrollPreviewGrid({ maxHeight = 300, ...props }) {
-  const ref = useRef(null);
-  const [h, setH] = useState(120);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let ro;
-    const attach = () => {
-      const body = el.querySelector(".ag-center-cols-container"),
-        head = el.querySelector(".ag-header");
-      if (!body || !head) return setTimeout(attach, 30);
-      const fit = () => setH(Math.min(maxHeight, head.offsetHeight + body.offsetHeight + 2));
-      ro = new ResizeObserver(fit);
-      ro.observe(body);
-      fit();
-    };
-    attach();
-    return () => ro && ro.disconnect();
-  }, []);
-  return (
-    <div ref={ref}>
-      <DataGrid className="preview-grid" style={{ height: h }} {...props} />
-    </div>
-  );
+  return <DataGrid className="preview-grid" {...props} style={{ height: maxHeight, ...props.style }} />;
 }
 // "Type - Code O, Activity Type Alpha:" — parameter names in the input-label colour, values in text colour.
 export const mappingSummary = (m) =>
@@ -105,21 +82,17 @@ function scheduleForCols(rows, fallbackKind) {
   const kinds = new Set((rows || []).filter((r) => r.where).map((r) => r.kind));
   const kind = kinds.size === 1 ? [...kinds][0] : kinds.size === 0 ? fallbackKind : null;
   const headerName = kind === "unit" ? "Unit" : kind === "activity" ? "Activity Type \u00B7 Category" : "For";
-  return [{ headerName, field: "where", width: 210, cellRenderer: dash }];
+  return [{ headerName, field: "where", width: kind === "unit" ? 100 : 232, cellRenderer: dash }]; // wide enough for the "Activity Type · Category" header, never truncated
 }
 // Every delete / confirm table lists the columns it has in this order: Activity Type · Category (or Unit), Schedule, Product Family (Type - Code goes in the sentence above).
 // Fixed widths for all but the last column, which takes the remaining space, so the table never scrolls sideways.
 const COL_RANK = { where: 1, when: 2, family: 3 };
-const PREVIEW_COL_WIDTH = { when: 200, family: 200 }; // 210 + 200 + 200 stays inside the 620px dialog table
+const PREVIEW_COL_WIDTH = { when: 200, family: 200 }; // 232 + 200 + 188 (min 150) stays inside the 620px dialog table
 function previewCols(cols) {
   const sorted = [...cols].sort((a, b) => COL_RANK[a.field || a.colId] - COL_RANK[b.field || b.colId]);
-  // Two columns (e.g. Activity Type · Category + Schedule): share the table width equally so there is space between them.
-  if (sorted.length === 2) return sorted.map(({ width, flex, minWidth, ...c }) => ({ ...c, flex: 1, minWidth: 150 }));
-  return sorted.map(({ flex, minWidth, ...c }, i) => {
-    const key = c.field || c.colId;
-    const width = PREVIEW_COL_WIDTH[key] || c.width;
-    return i === sorted.length - 1 ? { ...c, width, minWidth: 150, flex: 1 } : { ...c, width };
-  });
+  const isUnit = sorted[0].headerName === "Unit";
+  // Delete Mapping and Delete Product Family tables fill the dialog width: Activity Type · Category keeps 232 so its header is never truncated; every other column shares the remaining width equally, Unit included.
+  return sorted.map(({ flex, minWidth, ...c }) => (c.field === "where" && !isUnit ? c : { ...c, width: undefined, flex: 1, minWidth: 100 }));
 }
 // Delete Mapping: the Mapping's parameters in a sentence, then one row per Product Family × where it is scheduled.
 export function DeleteMappingPreview({ db, m, removed }) {
@@ -154,23 +127,13 @@ export function DeleteMappingPreview({ db, m, removed }) {
 }
 // Delete Product Family: where the family is used — one row per Schedule entry (or one row if only mapped).
 export function DeleteFamilyPreview({ db, name }) {
-  // A Product Family is mapped once. With Schedule entries the table carries the Activity Type · Category / Unit, so the line only names the Type ("Mapped to O");
-  // without a table the line keeps the full label ("Mapped to O · Alpha · Category A").
+  // The dialog sentence names the Mapping Type; the table carries the Activity Type · Category / Unit and the months.
   const usage = scheduleUsage(db, [name]);
   const rows = usage.map((u, i) => ({ id: i, kind: u.kind, where: u.where, when: u.when }));
-  const labels = ownershipLabels(db, name)
-    .map((l) => (l.startsWith("O ") || l === "T/X" ? l : typeCodeLabel(l)))
-    .map((l) => (rows.length ? l.split(" \u00B7 ")[0] : l));
   const mapped = db.mappings.find((m) => m.families.includes(name));
   const dash = (p) => p.value || <Dash />;
   return (
     <>
-      {labels.length ? (
-        <p style={{ margin: rows.length ? "0 0 16px" : 0 }}>
-          <span className="param-label">Mapped to</span> {[...new Set(labels)].join(", ")}
-          {rows.length ? <span className="param-label">:</span> : null}
-        </p>
-      ) : null}
       {rows.length ? (
         <ScrollPreviewGrid
           rowData={rows}

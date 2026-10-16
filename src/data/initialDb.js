@@ -2,7 +2,7 @@ import { up } from "../lib/utils";
 import { UNITS } from "../constants";
 
 const SEED_FAMILIES = [
-  ["Fruit", ["Apple", "Banana", "Orange"], "2026-08-20T09:00:00"],
+  ["Fruits", ["Apple", "Banana", "Orange"], "2026-08-20T09:00:00"],
   ["Machines", ["Lathe", "Drill"], "2026-08-25T11:00:00"],
   [
     "Gadgets",
@@ -52,9 +52,22 @@ const SEED_FAMILIES = [
   ["Wellness", ["Vitamin", "Bandage", "Thermometer"], "2026-09-23T08:25:00"],
   ["Baby", ["Diaper", "Wipe", "Formula"], "2026-09-24T09:05:00"],
   ["Music", ["Guitar", "Keyboard", "Drumstick"], "2026-09-25T12:15:00"],
-  ["Art Kits", ["Paint", "Canvas", "Brush"], "2026-09-26T14:50:00"],
+  ["Art Kits", ["Watercolor", "Canvas", "Brush"], "2026-09-26T14:50:00"],
+  ["Cars", ["Sedan", "Hatchback", "Pickup"], "2026-09-28T10:10:00"],
+  ["Paint", ["Primer", "Enamel", "Varnish"], "2026-09-29T11:20:00"],
+  ["Mall", ["Voucher", "Kiosk", "Trolley"], "2026-09-30T13:40:00"],
+  ["Zoo", ["Ticket", "Plush", "Keychain"], "2026-10-01T09:30:00"],
   // One Product per Unit for the read-only Fixed column; names are unique across all Product Families and Products.
   ["Fixed", UNITS.map((_, i) => `Fixed${String(i + 1).padStart(2, "0")}`), "2026-09-27T09:00:00"],
+];
+const TX_FAMILIES = ["CARS", "BEAUTY", "BOOKS", "CLOTHES", "HARDWARE", "PAINT", "DECOR", "MUSIC", "MACHINES", "TOYS", "FOOTWEAR"];
+const SCHEDULED_UNITS = ["123", "345", "678", "112", "445"];
+// [Activity Type, Category, [Jul, Aug, Sep, Oct, Nov, Dec]] with the Product Families scheduled in each month
+const ACTIVITY_PLAN = [
+  ["FA", "F", [["FRUITS"], ["MALL", "GARDEN"], ["SPORTS"], ["FRUITS", "MALL"], ["GARDEN"], ["SPORTS", "FRUITS"]]],
+  ["HA", "H", [["OFFICE"], ["WRITING"], ["ZOO", "OFFICE"], ["WRITING"], ["OFFICE", "ZOO"], ["WRITING"]]],
+  ["Another", "H", [["PET CARE"], ["GADGETS"], ["COOKWARE", "PET CARE"], ["GADGETS"], ["PET CARE", "COOKWARE"], ["GADGETS"]]],
+  ["Another", "T", [["WELLNESS"], ["ART KITS", "BABY"], ["WELLNESS"], ["BABY"], ["ART KITS", "WELLNESS"], ["BABY"]]],
 ];
 // Data preset, chosen on the launcher page before the modal opens:
 // "full"  = dummy data everywhere; "empty" = Product Families only, with no Mappings and nothing scheduled.
@@ -77,50 +90,69 @@ export function initialDb(preset = "full") {
         id: 1,
         type: "O",
         code: null,
-        activityType: "Alpha",
-        category: ["Category A", "Category B"],
-        links: { "Category A": ["ART KITS", "AUTO", "BABY"], "Category B": ["OFFICE", "PET CARE"] },
-        families: ["ART KITS", "AUTO", "BABY", "OFFICE", "PET CARE"],
+        activityType: "FA",
+        category: ["F"],
+        links: { "F": ["FRUITS", "MALL", "GARDEN", "SPORTS"] },
+        families: ["FRUITS", "MALL", "GARDEN", "SPORTS"],
         createdAt: "2026-09-01T09:00:00",
         updatedAt: "2026-09-01T09:00:00",
       },
       {
         id: 2,
+        type: "O",
+        code: null,
+        activityType: "HA",
+        category: ["H"],
+        links: { "H": ["OFFICE", "WRITING", "ZOO"] },
+        families: ["OFFICE", "WRITING", "ZOO"],
+        createdAt: "2026-09-02T09:00:00",
+        updatedAt: "2026-09-02T09:00:00",
+      },
+      {
+        id: 3,
+        type: "O",
+        code: null,
+        activityType: "Another",
+        category: ["H", "T"],
+        links: { "H": ["PET CARE", "GADGETS", "COOKWARE"], "T": ["WELLNESS", "ART KITS", "BABY"] },
+        families: ["PET CARE", "GADGETS", "COOKWARE", "WELLNESS", "ART KITS", "BABY"],
+        createdAt: "2026-09-03T09:00:00",
+        updatedAt: "2026-09-03T09:00:00",
+      },
+      {
+        id: 4,
         type: "T/X",
         code: null,
         activityType: null,
         category: null,
         links: null,
-        families: ["BEAUTY", "BOOKS", "CLOTHES"],
+        families: ["CARS", "BEAUTY", "BOOKS", "CLOTHES", "HARDWARE", "PAINT", "DECOR", "MUSIC", "MACHINES", "TOYS", "FOOTWEAR"],
         createdAt: "2026-09-05T10:30:00",
         updatedAt: "2026-09-12T11:00:00",
       },
       {
-        id: 3,
+        id: 5,
         type: "X",
         code: "PREP",
         activityType: null,
         category: null,
         links: null,
-        families: ["FRUIT"],
+        families: ["FOOD"],
         createdAt: "2026-09-08T09:00:00",
         updatedAt: "2026-09-08T09:00:00",
       },
     ],
     nextMappingId: 6,
-    // Unit schedule: Type T/X Product Family per Unit per month. key = "YYYY-M" (0-based month)
-    schedules: [
-      { unit: "123A", key: "2026-8", family: "BEAUTY" },
-      { unit: "456B", key: "2026-9", family: "BOOKS" },
-      { unit: "789C", key: "2026-10", family: "CLOTHES" },
-    ],
-    // Activity Type schedule: Type O Product Families per Activity Type + Category per month (one or more per month)
-    activitySchedules: [
-      { activityType: "Alpha", category: "Category A", key: "2026-8", family: "ART KITS" },
-      { activityType: "Alpha", category: "Category B", key: "2026-8", family: "PET CARE" },
-      { activityType: "Alpha", category: "Category B", key: "2026-9", family: "OFFICE" },
-      { activityType: "Alpha", category: "Category A", key: "2026-10", family: "AUTO" },
-    ],
+    // Unit schedule (Type T/X): 5 Units carry Product Families, Jul to Dec 2026. A Unit never repeats a Product Family across its months, and in any month
+    // the five Units hold different ones (the six families rotate by Unit). key = "YYYY-M" (0-based month). Some months are left empty on purpose.
+    schedules: SCHEDULED_UNITS.flatMap((unit, i) =>
+      [6, 7, 8, 9, 10, 11].flatMap((m, j) => ((i + j) % 4 === 3 ? [] : [{ unit, key: `2026-${m}`, family: TX_FAMILIES[(i + j) % TX_FAMILIES.length] }])),
+    ),
+    // Activity Type schedule (Type O): Product Families per Activity Type + Category per month (one or more per month), Jul to Dec 2026.
+    // The same Product Family never sits in two consecutive months of a row.
+    activitySchedules: ACTIVITY_PLAN.flatMap(([activityType, category, months]) =>
+      months.flatMap((families, j) => families.map((family) => ({ activityType, category, key: `2026-${6 + j}`, family }))),
+    ),
     // Fixed per Unit (read-only, does not vary by month): its own Product from the unmapped FIXED Product Family, never shared between Units.
     fixed: Object.fromEntries(UNITS.map((unit, i) => [unit, [{ kind: "product", name: up(`Fixed${String(i + 1).padStart(2, "0")}`) }]])),
     hiddenUnits: [],

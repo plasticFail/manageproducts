@@ -36,10 +36,10 @@ export function ProductsList({ search, onCreate, onEdit }) {
             {
               colId: "actions",
               headerName: "Actions",
-              width: 90,
+              width: 120,
               cellRenderer: (p) => (
                 <div className="action-cell">
-                  <IconButton className="icon-action" title="Edit" onClick={() => onEdit(p.data.name)}>
+                  <IconButton className="icon-action" title="Edit" disabled={p.data.name === FIXED_FAMILY} onClick={() => onEdit(p.data.name)}>
                     <EditOutlined />
                   </IconButton>
                   <IconButton
@@ -69,11 +69,12 @@ export function ProductsList({ search, onCreate, onEdit }) {
             rowData={rows}
             getRowId={(p) => p.data.name}
             columnDefs={columnDefs}
+            rowClassRules={{ "row-locked": (p) => !!p.data && p.data.name === FIXED_FAMILY }}
             overlayNoRowsTemplate={`<div class="empty">No results found.</div>`}
             onRowClicked={(e) => {
               if (e.event && e.event.target.closest(".icon-action")) return;
               setDb((d) => ({ ...d, changedFamilies: without(d.changedFamilies, e.data.name) }));
-              if (canEdit) onEdit(e.data.name);
+              if (canEdit && e.data.name !== FIXED_FAMILY) onEdit(e.data.name); // FIXED cannot be edited or deleted
             }}
           />
         )}

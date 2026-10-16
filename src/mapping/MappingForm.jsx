@@ -6,7 +6,7 @@ import { PickerField, SelectField } from "../components/PickerField";
 import { useEffect, useState } from "react";
 import { RemovedSchedulePreview, UndoNote } from "../components/previews";
 import { isCategoryType, nowStamp, ownershipLabels, productTextList, toggle, typeCodeKey, typeCodeLabel, withAdded, without } from "../lib/utils";
-import { activityRows, pruneSchedule, validateFamily, withTabDots } from "../lib/domain";
+import { activityRowId, activityRows, pruneSchedule, validateFamily, withTabDots } from "../lib/domain";
 import { snap, useInitialSnapshot } from "../components/EditGrid";
 import { useDeleteMapping } from "./useDeleteMapping";
 
@@ -63,6 +63,13 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
       setLinks({});
     }
   }
+  // Selected Categories that another Mapping already holds under this Activity Type (one Mapping per Activity Type + Category).
+  const clashMessage = (activityType, cats) => {
+    const taken = cats.filter((p) => db.mappings.some((mm) => mm.activityType === activityType && (mm.category || []).includes(p) && mm.id !== editingId));
+    if (!taken.length) return "";
+    const pairs = taken.map((p) => `${activityType} \u00B7 ${p}`);
+    return `${pairs.length === 1 ? pairs[0] : pairs.slice(0, -1).join(", ") + " and " + pairs[pairs.length - 1]} already ${pairs.length === 1 ? "exists" : "exist"}.`;
+  };
   function changePt(v) {
     dirty();
     setPt(v);
@@ -72,8 +79,12 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
       setLinks({});
       return;
     }
+    // The Categories and their Product Families move with the Mapping to the new Activity Type; a Category that is already taken there is flagged, not dropped.
     const allowed = CATEGORY_BY_ACTIVITY_TYPE[v] || [];
-    setCategory(category.filter((p) => allowed.includes(p)));
+    const kept = category.filter((p) => allowed.includes(p));
+    setCategory(kept);
+    const msg = clashMessage(v, kept);
+    if (msg) setErrors((e) => ({ ...e, category: msg }));
   }
   function toggleCategory(p) {
     dirty();
@@ -124,6 +135,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
     if (isCategoryType(type)) {
       if (!pt) errs.pt = "This is a required field.";
       else if (!category.length) errs.category = "This is a required field.";
+      else if (clashMessage(pt, category)) errs.category = clashMessage(pt, category);
       category
         .filter((p) => !(links[p] || []).length)
         .forEach((p) => {
@@ -151,7 +163,12 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
     if (Object.keys(errs).length) return;
     const usedDrafts = drafts.filter((d) => used.includes(d.name));
     const now = nowStamp();
-    const buildNext = (d) => {
+    const buildNext = (d0) => {
+      // Changing the Activity Type of a Type O Mapping moves the Schedule of each kept Category to its new Activity Type + Category row.
+      const d =
+        m && m.type === "O" && type === "O" && m.activityType !== pt
+          ? { ...d0, activitySchedules: d0.activitySchedules.map((x) => (x.activityType === m.activityType && category.includes(x.category) ? { ...x, activityType: pt } : x)) }
+          : d0;
       const families = [...d.families];
       usedDrafts.forEach((dr) => {
         if (!families.some((f) => f.name === dr.name)) families.push({ ...dr, createdAt: now, updatedAt: now });
@@ -177,12 +194,18 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
         changedFamilies: [...new Set([...d.changedFamilies, ...newFamilies])],
       };
       const before = new Set(activityRows(d).map((r) => r.rowId));
+      // Rows get the changed dot when they are new (also a Category moved to another Activity Type) or when their Product Families change.
+      const familiesChanged = (p) => {
+        const was = (m && m.type === "O" && m.activityType === pt && (m.links || {})[p]) || null;
+        const now = links[p] || [];
+        return !!was && (was.length !== now.length || !was.every((f) => now.includes(f)));
+      };
+      const rowIds = new Set(activityRows(next).map((r) => r.rowId));
       next.changedActivityRows = [
         ...new Set([
-          ...d.changedActivityRows,
-          ...activityRows(next)
-            .map((r) => r.rowId)
-            .filter((id) => !before.has(id)),
+          ...d.changedActivityRows.filter((id) => rowIds.has(id)),
+          ...[...rowIds].filter((id) => !before.has(id)),
+          ...(type === "O" ? category.filter(familiesChanged).map((p) => activityRowId(pt, p)) : []),
         ]),
       ];
       return pruneSchedule(next);
@@ -214,9 +237,11 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
                 </p>
               ) : null}
               {moved.length ? (
-                <p
-                  style={{ margin: "16px 0 0" }}
-                >{`Moving ${moved.length === 1 ? "this Product Family" : "these Product Families"} to Type - Code ${type} will also remove ${moved.length === 1 ? "it" : "them"} from Schedule.`}</p>
+                <p style={{ margin: "16px 0 0" }}>
+                  {m && typeCodeKey(m) === type
+                    ? `Changing this Mapping will also remove ${moved.length === 1 ? "this Product Family" : "these Product Families"} from Schedule, which is set per Activity Type and Category.`
+                    : `Moving ${moved.length === 1 ? "this Product Family" : "these Product Families"} to Type - Code ${type} will also remove ${moved.length === 1 ? "it" : "them"} from Schedule.`}
+                </p>
               ) : null}
               <UndoNote />
             </>
@@ -233,7 +258,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
     if (type === "O") {
       if (
         !(prefill && prefill.fromSchedule) &&
-        category.some((p) => !db.activitySchedules.some((x) => x.activityType === pt && x.category === p))
+        category.some((p) => !db.activitySchedules.some((x) => x.category === p && (x.activityType === pt || (m && m.type === "O" && x.activityType === m.activityType))))
       )
         cta = { label: "Schedule for Activity Type", onClick: () => openSchedule("activity") };
     } else if (type === "T/X") {

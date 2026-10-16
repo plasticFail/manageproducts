@@ -14,9 +14,9 @@ const without2 = (o, k) => {
 };
 export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub }) {
   const { db, setDb } = useDb();
-  const { notify, guardRowEdit, rowEditRef, openCreateMapping, resumeEditRef, access, scheduleMode } = useUi();
+  const { notify, guardRowEdit, rowEditRef, openCreateMapping, resumeEditRef, access } = useUi();
   // Review switch: "always" = every month shows its select; "click" = rows read as chips and a clicked row opens its selects.
-  const clickMode = scheduleMode === "click";
+  const clickMode = true; // rows read as chips; clicking a row opens its selects
   const canEdit = access.schedule; // otherwise the Schedule is view only: no row editing, no Actions column
   const canMap = access.mapping; // the empty states link to Create Mapping only for people who can create one
   const isUnit = sub === "unit";
@@ -155,26 +155,26 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     headerName: "",
     width: 36,
     pinned: "left",
-    cellStyle: { textAlign: "center" },
     cellRenderer: (p) => (p.data.changed ? <span className="row-dot" /> : null),
   };
   const labelCols = isUnit
     ? [
         dotCol,
-        { field: "unit", headerName: "Unit", width: 80, pinned: "left" },
+        { field: "unit", headerName: "Unit", width: 120, pinned: "left", cellClass: "after-dot", headerClass: "after-dot" },
         // Read-only label column like Unit: same text style, left aligned.
         {
           colId: "fixed",
           headerName: "Fixed Product",
-          width: 150,
+          width: 160,
           pinned: "left",
           cellRenderer: (p) => ((db.fixed[p.data.rowId] || []).map((x) => x.name).join(", ")) || <Dash />,
         },
       ]
     : [
         dotCol,
-        { field: "activityType", headerName: "Activity Type", width: 140, pinned: "left" },
-        { field: "category", headerName: "Category", width: 126, pinned: "left" },
+        // Activity Type + Category share the width of Unit + Fixed Product (280), so the month columns line up on both Schedule tabs.
+        { field: "activityType", headerName: "Activity Type", width: 140, pinned: "left", cellClass: "after-dot", headerClass: "after-dot" },
+        { field: "category", headerName: "Category", width: 140, pinned: "left" },
       ];
   const columnDefs = [
     ...labelCols,
@@ -195,7 +195,7 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
       cellRenderer: ScheduleMonthCell,
       suppressKeyboardEvent: () => true,
     })),
-    ...(canEdit ? [{ colId: "actions", headerName: "Actions", width: 90, pinned: "right", cellRenderer: ScheduleActionsCell }] : []),
+    ...(canEdit ? [{ colId: "actions", headerName: "Actions", width: 120, pinned: "right", cellRenderer: ScheduleActionsCell }] : []),
   ];
   // Clicking a label cell clears the row dot. In click mode, clicking any other cell opens that row (asking first if another row has unsaved changes).
   async function onCellClicked(e) {
@@ -227,8 +227,14 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
               if (v && v !== sub && (await guardRowEdit())) setSub(v);
             }}
           >
-            <ToggleButton value="unit">Unit</ToggleButton>
-            <ToggleButton value="activity">Activity Type</ToggleButton>
+            <ToggleButton value="unit">
+              Unit
+              {(db.changedUnits || []).length ? <span className="tab-dot" /> : null}
+            </ToggleButton>
+            <ToggleButton value="activity">
+              Activity Type
+              {(db.changedActivityRows || []).length ? <span className="tab-dot" /> : null}
+            </ToggleButton>
           </ToggleButtonGroup>
           <MonthStepper
             windowStart={windowStart}

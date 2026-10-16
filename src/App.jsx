@@ -28,7 +28,7 @@ const isListView = (v) => ["mappingList", "scheduleGrid", "productsList"].includ
 const LIST_VIEW = { mapping: { name: "mappingList" }, schedule: { name: "scheduleGrid" }, products: { name: "productsList" } };
 const SEARCH_PLACEHOLDER = { mapping: "Search Mapping\u2026", schedule: "Search Schedule\u2026", products: "Search\u2026" };
 // One Manage Products window for one persona. The data (db) and its preset live in App, so every persona sees the same data.
-function Workspace({ persona, db, setDb, scheduleMode }) {
+function Workspace({ persona, db, setDb }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState("mapping");
   const [view, setView] = useState(LIST_VIEW.mapping);
@@ -49,6 +49,13 @@ function Workspace({ persona, db, setDb, scheduleMode }) {
     (message, action = null, duration = null) => setSnack((s) => ({ open: true, message, action, duration, n: s.n + 1 })),
     [],
   );
+  // Every Snackbar closes on its own timer (same timing everywhere); it does not pause on hover, focus or window blur, so none can stay open.
+  useEffect(() => {
+    if (!snack.open) return;
+    const ms = snack.duration || Math.max(snack.action ? 8e3 : 0, Math.min(1e4, 5e3 + Math.max(0, String(snack.message).length - 40) * 100));
+    const id = setTimeout(() => setSnack((s) => (s.n === snack.n ? { ...s, open: false } : s)), ms);
+    return () => clearTimeout(id);
+  }, [snack.n, snack.open]);
   // A Unit row being edited in the Schedule table: switching tabs, paging months, opening another row or closing asks first.
   const rowEditRef = useRef({ dirty: false, cancel: () => {} });
   // A Schedule row left open while the user goes off to create a Mapping (and its unsaved choices) is restored when they come back.
@@ -181,7 +188,7 @@ function Workspace({ persona, db, setDb, scheduleMode }) {
     <>
       <DbContext.Provider value={{ db, setDb }}>
         <UiContext.Provider
-          value={{ confirm, notify, openSchedule, openCreateMapping, guardRowEdit, rowEditRef, resumeEditRef, access: persona.access, scheduleMode }}
+          value={{ confirm, notify, openSchedule, openCreateMapping, guardRowEdit, rowEditRef, resumeEditRef, access: persona.access }}
         >
           <div className="wrap">
             <Button
@@ -228,6 +235,17 @@ function Workspace({ persona, db, setDb, scheduleMode }) {
                   <Tab value="products" label={tabLabel("Product Family", "products")} />
                 </Tabs>
                 <div className="tab-tools">
+                  {["mapping", "schedule", "products"].some(tabHasRowDots) ? (
+                    <Button
+                      variant="link"
+                      sx={{ ml: 0, mr: "16px", whiteSpace: "nowrap" }}
+                      onClick={() =>
+                        setDb((d) => ({ ...d, changedMappings: [], changedFamilies: [], changedUnits: [], changedActivityRows: [], tabDots: [] }))
+                      }
+                    >
+                      Mark all as reviewed
+                    </Button>
+                  ) : null}
                   <TextField
                     id="tabSearchInput"
                     placeholder={SEARCH_PLACEHOLDER[tab]}
@@ -253,9 +271,6 @@ function Workspace({ persona, db, setDb, scheduleMode }) {
           <Snackbar
             key={snack.n}
             open={snack.open}
-            autoHideDuration={
-              snack.duration || Math.max(snack.action ? 8e3 : 0, Math.min(1e4, 5e3 + Math.max(0, String(snack.message).length - 40) * 100))
-            }
             ContentProps={{ className: snack.action ? "snack-with-action" : "" }}
             message={snack.message}
             anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
@@ -295,7 +310,6 @@ export default function App() {
   );
   const [db, setDb] = useState(() => initialDb(preset));
   const [personaId, setPersonaId] = useState("A");
-  const [scheduleMode, setScheduleMode] = useState("always"); // review switch: Schedule selects always shown ("always", Version 41) or opened by clicking a row ("click")
   const [resetN, setResetN] = useState(0); // bumps when the data is reset, so the window starts fresh (search, filter, month)
   const persona = PERSONAS.find((x) => x.id === personaId);
   return (
@@ -325,21 +339,6 @@ export default function App() {
             ))}
           </ToggleButtonGroup>
         </div>
-        <div className="preset">
-          <div className="preset-label" id="schedule-mode-label">
-            Schedule
-          </div>
-          <ToggleButtonGroup
-            exclusive
-            className="segmented"
-            aria-labelledby="schedule-mode-label"
-            value={scheduleMode}
-            onChange={(e, v) => v && setScheduleMode(v)}
-          >
-            <ToggleButton value="always">Version 41</ToggleButton>
-            <ToggleButton value="click">Click row to edit</ToggleButton>
-          </ToggleButtonGroup>
-        </div>
         </div>
         <div className="persona-bar">
           <Tabs value={personaId} onChange={(e, v) => setPersonaId(v)} aria-label="Persona">
@@ -348,7 +347,7 @@ export default function App() {
             ))}
           </Tabs>
         </div>
-        <Workspace key={`${personaId}-${resetN}`} persona={persona} db={db} setDb={setDb} scheduleMode={scheduleMode} />
+        <Workspace key={`${personaId}-${resetN}`} persona={persona} db={db} setDb={setDb} />
       </div>
     </ThemeProvider>
   );

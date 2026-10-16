@@ -76,7 +76,7 @@ export function ConfirmDialog({ state, onClose }) {
       maxWidth={false}
       PaperProps={{
         className: "confirm-paper",
-        sx: { width: "fit-content", minWidth: 504, maxWidth: "min(680px, 90vw)", maxHeight: "90vh", border: "1px solid #6E6E6E" },
+        sx: { width: state.wide ? "min(680px, 90vw)" : "fit-content", minWidth: 504, maxWidth: "min(680px, 90vw)", maxHeight: "90vh", border: "1px solid #6E6E6E" },
       }}
     >
       <div className="modal-head">
