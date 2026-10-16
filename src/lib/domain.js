@@ -1,4 +1,4 @@
-import { MONTH_NAMES, CATEGORY_LIST, ACTIVITY_TYPES } from "../constants";
+import { MONTH_NAMES } from "../constants";
 import { up } from "./utils";
 
 export function typeForFamily(db, name) {
@@ -36,11 +36,8 @@ export function activityRows(db) {
         }),
       ),
     );
-  return rows.sort(
-    (a, b) =>
-      ACTIVITY_TYPES.indexOf(a.activityType) - ACTIVITY_TYPES.indexOf(b.activityType) ||
-      CATEGORY_LIST.indexOf(a.category) - CATEGORY_LIST.indexOf(b.category),
-  );
+  // Alphabetical by Activity Type, then by Category.
+  return rows.sort((a, b) => a.activityType.localeCompare(b.activityType) || a.category.localeCompare(b.category));
 }
 // Unit tab, Fixed column: Products of Product Families that are not mapped at all (read-only, assigned per Unit).
 export function fixedPool(db) {

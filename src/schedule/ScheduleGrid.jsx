@@ -137,7 +137,9 @@ export function ScheduleGrid({ search, windowStart, setWindowStart, sub, setSub 
     rev: JSON.stringify([drafts[id] || null, !!committed[id], changedList.includes(id), isUnit && tFamilies.length === 0, canEdit, clickMode, editing === id]), // changes only when this row does, so AG Grid refreshes just that row
   });
   const rows = isUnit
-    ? UNITS.filter((h) => !db.hiddenUnits.includes(h))
+    ? [...UNITS] // ascending by Unit number
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+        .filter((h) => !db.hiddenUnits.includes(h))
         .filter(
           (h) =>
             !term ||

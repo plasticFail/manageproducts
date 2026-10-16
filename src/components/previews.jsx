@@ -84,6 +84,19 @@ function scheduleForCols(rows, fallbackKind) {
   const headerName = kind === "unit" ? "Unit" : kind === "activity" ? "Activity Type \u00B7 Category" : "For";
   return [{ headerName, field: "where", width: kind === "unit" ? 100 : 232, cellRenderer: dash }]; // wide enough for the "Activity Type · Category" header, never truncated
 }
+// Confirmation tables list rows in the order of the columns: Unit ascending (numeric) or Activity Type · Category alphabetically, then Schedule (earliest month first), then Product Family alphabetically. Rows with no where (mapped, never scheduled) come last.
+const firstMonth = (s) => {
+  const t = Date.parse(`1 ${String(s || "").split(",")[0].trim()}`);
+  return Number.isNaN(t) ? Infinity : t;
+};
+const sortPreviewRows = (rows) =>
+  [...rows].sort(
+    (a, b) =>
+      (a.where ? 0 : 1) - (b.where ? 0 : 1) ||
+      String(a.where || "").localeCompare(String(b.where || ""), undefined, { numeric: true }) ||
+      firstMonth(a.when) - firstMonth(b.when) ||
+      String(a.family || "").localeCompare(String(b.family || "")),
+  );
 // Every delete / confirm table lists the columns it has in this order: Activity Type · Category (or Unit), Schedule, Product Family (Type - Code goes in the sentence above).
 // Fixed widths for all but the last column, which takes the remaining space, so the table never scrolls sideways.
 const COL_RANK = { where: 1, when: 2, family: 3 };
@@ -98,14 +111,14 @@ function previewCols(cols) {
 export function DeleteMappingPreview({ db, m, removed }) {
   const links = m.links || {};
   const team = (f) => (isCategoryType(m.type) ? (m.category || []).filter((p) => (links[p] || []).includes(f)).join(", ") : "");
-  const rows = m.families
-    .flatMap((f) => {
+  const rows = sortPreviewRows(
+    m.families.flatMap((f) => {
       const u = removed.filter((x) => x.family === f);
       return u.length
         ? u.map((x) => ({ family: f, team: team(f), kind: x.kind, where: x.where, when: x.when }))
         : [{ family: f, team: team(f), kind: team(f) ? "activity" : null, where: team(f) ? `${m.activityType} \u00B7 ${team(f)}` : null, when: null }];
-    })
-    .map((r, i) => ({ id: i, ...r }));
+    }),
+  ).map((r, i) => ({ id: i, ...r }));
   const dash = (p) => p.value || <Dash />;
   return (
     <ScrollPreviewGrid
@@ -129,7 +142,7 @@ export function DeleteMappingPreview({ db, m, removed }) {
 export function DeleteFamilyPreview({ db, name }) {
   // The dialog sentence names the Mapping Type; the table carries the Activity Type · Category / Unit and the months.
   const usage = scheduleUsage(db, [name]);
-  const rows = usage.map((u, i) => ({ id: i, kind: u.kind, where: u.where, when: u.when }));
+  const rows = sortPreviewRows(usage.map((u) => ({ kind: u.kind, where: u.where, when: u.when }))).map((r, i) => ({ id: i, ...r }));
   const mapped = db.mappings.find((m) => m.families.includes(name));
   const dash = (p) => p.value || <Dash />;
   return (
@@ -151,7 +164,7 @@ export function DeleteFamilyPreview({ db, name }) {
 }
 const nameList = (xs) => (xs.length <= 2 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
 export function RemovedSchedulePreview({ db, rows }) {
-  const data = rows.map((r, i) => ({ id: i, ...r }));
+  const data = sortPreviewRows(rows).map((r, i) => ({ id: i, ...r }));
   return (
     <ScrollPreviewGrid
       rowData={data}

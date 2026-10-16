@@ -1,24 +1,7 @@
-export const ACTIVITY_TYPES = ["FA", "HA", "Another"];
+export const ACTIVITY_TYPES = ["FA", "HA", "SW"];
 export const CATEGORY_LIST = ["H", "F", "U", "T"];
-export const CATEGORY_BY_ACTIVITY_TYPE = { FA: CATEGORY_LIST, HA: CATEGORY_LIST, Another: CATEGORY_LIST };
-export const UNITS = [
-  "123",
-  "456",
-  "789",
-  "234",
-  "345",
-  "567",
-  "678",
-  "890",
-  "901",
-  "112",
-  "223",
-  "334",
-  "445",
-  "556",
-  "667",
-  "778",
-];
+export const CATEGORY_BY_ACTIVITY_TYPE = { FA: CATEGORY_LIST, HA: CATEGORY_LIST, SW: CATEGORY_LIST };
+export const UNITS = ["111", "112", "123", "134", "140", "142", "145"]; // ascending
 export const VISIBLE_MONTHS = 6;
 // Year (and Month) column width in the Schedule for All Units tables
 const YEAR_COL_W = 180;
