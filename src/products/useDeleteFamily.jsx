@@ -11,12 +11,11 @@ export function useDeleteFamily() {
     const inMapping = db.mappings.some((m) => m.families.includes(name));
     const scheduled = scheduleUsage(db, [name]).length > 0;
     const mapped = inMapping || scheduled;
-    let body,
-      confirmLabel = "Delete",
-      emptiedCount = 0;
+    let body;
+    const confirmLabel = "Delete";
     if (mapped) {
       // Mappings left with no Product Family are deleted as a whole row.
-      emptiedCount = db.mappings.filter((m) => m.families.length === 1 && m.families[0] === name).length;
+      const emptiedCount = db.mappings.filter((m) => m.families.length === 1 && m.families[0] === name).length;
       const mp = db.mappings.find((m) => m.families.includes(name));
       const mapName = mp ? (mp.type === "O" ? "Type O Mapping" : mp.type === "X" ? `X - ${mp.code} Mapping` : "Type T/X Mapping") : "Mapping";
       const where = inMapping && scheduled ? `${mapName} and Schedule` : inMapping ? mapName : "Schedule";
@@ -24,7 +23,7 @@ export function useDeleteFamily() {
         <>
           <p style={{ margin: 0 }}>
             {`Product Family is currently in use. Deleting this will also remove it from ${where}`}
-            {emptiedCount === 0 ? "." : emptiedCount === 1 ? ", and delete the Mapping as it has no other Product Family." : ", and delete the Mappings that have no other Product Family."}
+            {emptiedCount ? ", and delete the Mapping as it has no other Product Family." : "."}
           </p>
           <div style={{ marginTop: 16 }}>
             <DeleteFamilyPreview db={db} name={name} />

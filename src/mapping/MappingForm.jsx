@@ -226,28 +226,28 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
           {draftLine}
           {removed.length ? (
             <>
-              <div style={{ marginTop: draftLine ? 16 : 0 }}>
-                <RemovedSchedulePreview db={db} rows={removed} />
-              </div>
               {unmapped.length ? (
-                <p style={{ margin: "16px 0 0" }}>
+                <p style={{ margin: draftLine ? "16px 0 0" : 0 }}>
                   {unmapped.length === 1
                     ? "Removing this Product Family from this Mapping will also remove it from Schedule."
                     : "Removing these Product Families from this Mapping will also remove them from Schedule."}
                 </p>
               ) : null}
               {moved.length ? (
-                <p style={{ margin: "16px 0 0" }}>
+                <p style={{ margin: draftLine || unmapped.length ? "16px 0 0" : 0 }}>
                   {m && typeCodeKey(m) === type
                     ? `Changing this Mapping will also remove ${moved.length === 1 ? "this Product Family" : "these Product Families"} from Schedule, which is set per Activity Type and Category.`
                     : `Moving ${moved.length === 1 ? "this Product Family" : "these Product Families"} to Type - Code ${type} will also remove ${moved.length === 1 ? "it" : "them"} from Schedule.`}
                 </p>
               ) : null}
+              <div style={{ marginTop: draftLine || unmapped.length || moved.length ? 16 : 0 }}>
+                <RemovedSchedulePreview db={db} rows={removed} />
+              </div>
               <UndoNote />
             </>
           ) : null}
         </>,
-        { title: m ? "Update Mapping" : "Create Mapping", confirmLabel: m ? "Update" : "Create" },
+        { title: m ? "Update Mapping" : "Create Mapping", confirmLabel: m ? "Update" : "Create", wide: removed.length > 0 },
       );
       if (!ok) return;
     }
