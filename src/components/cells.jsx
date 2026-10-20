@@ -2,15 +2,16 @@ import ArrowDownwardOutlined from "@mui/icons-material/ArrowDownwardOutlined";
 import ArrowUpwardOutlined from "@mui/icons-material/ArrowUpwardOutlined";
 import { Chip } from "@mui/material";
 import { useState } from "react";
-import { formatDate, isCategoryType } from "../lib/utils";
+import { formatDate, groupsOf, hasGroups, isCategoryType } from "../lib/utils";
 
 // Table chip: one fill for every Product Family (no Type colours).
 export function FamilyTag({ name, variant = "tag", ...rest }) {
   return <Chip variant={variant} label={name} className="table-chip" {...rest} />;
 }
 export const Dash = () => <span className="muted">—</span>;
+// Type O lists its Categories and O/T/X Codes their Units, each with its own Product Families ("H: chips", "111: chips").
 function categoryWithFamilies(db, m) {
-  return (m.category || []).filter((p) => ((m.links || {})[p] || []).length > 0);
+  return groupsOf(m).filter((p) => ((m.links || {})[p] || []).length > 0);
 }
 function CategoryCell({ db, m }) {
   if (!isCategoryType(m.type)) return <Dash />;
@@ -18,7 +19,21 @@ function CategoryCell({ db, m }) {
   return list.length ? list.join(", ") : <Dash />;
 }
 export function FamilyCell({ db, m }) {
-  if (isCategoryType(m.type)) {
+  // O/T/X Codes: per Unit, plain text (Products, not Product Families, so no chips).
+  if (m.units)
+    return (
+      <div className="family-cats">
+        {categoryWithFamilies(db, m).map((u) => (
+          <div key={u} className="family-tags-wrap" style={{ alignItems: "center" }}>
+            <span className="muted cat-label">{u} Unit:</span>
+            <span className="unit-products" style={{ fontSize: 14, lineHeight: "18px" }}>
+              {m.links[u].join(", ")}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  if (hasGroups(m)) {
     return (
       <div className="family-cats">
         {categoryWithFamilies(db, m).map((p) => (

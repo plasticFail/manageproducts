@@ -1,11 +1,11 @@
 import { Button } from "@mui/material";
 import { CreateFamilyDialog } from "../products/FamilyFields";
 import { FieldLabel, Section, useDb, useUi } from "../components/common";
-import { CATEGORY_BY_ACTIVITY_TYPE, ACTIVITY_TYPES, FIXED_FAMILY } from "../constants";
+import { CATEGORY_BY_ACTIVITY_TYPE, ACTIVITY_TYPES, FIXED_FAMILY, UNITS } from "../constants";
 import { PickerField, SelectField } from "../components/PickerField";
 import { useEffect, useState } from "react";
 import { RemovedSchedulePreview, UndoNote } from "../components/previews";
-import { isCategoryType, nowStamp, ownershipLabels, productTextList, toggle, typeCodeKey, typeCodeLabel, withAdded, without } from "../lib/utils";
+import { byUnit, groupsOf, isCategoryType, nowStamp, ownershipLabels, productTextList, SPECIAL_CODES, specialByKey, toggle, typeCodeKey, typeCodeLabel, withAdded, without } from "../lib/utils";
 import { activityRowId, activityRows, pruneSchedule, validateFamily, withTabDots } from "../lib/domain";
 import { snap, useInitialSnapshot } from "../components/EditGrid";
 import { useDeleteMapping } from "./useDeleteMapping";
@@ -20,18 +20,19 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
   const [category, setCategory] = useState(m ? [...(m.category || [])] : []);
   const [links, setLinks] = useState(() => {
     const l = {};
-    if (m && m.type === "O")
-      (m.category || []).forEach((p) => {
+    if (m && (m.type === "O" || m.units))
+      groupsOf(m).forEach((p) => {
         l[p] = [...((m.links || {})[p] || [])];
       });
     return l;
   });
   const [tFam, setTFam] = useState(m && m.type === "T/X" ? [...m.families] : []);
-  const [xFam, setXFam] = useState(m && m.type === "X" ? [...m.families] : []);
+  const [xFam, setXFam] = useState(m && m.code && !m.units ? [...m.families] : []); // the single Product Family of X - PREP
+  const [units, setUnits] = useState(m && m.units ? [...m.units] : []); // O/T/X Codes only: each Unit links its own Product Families
   const [drafts, setDrafts] = useState([]);
   const [errors, setErrors] = useState({});
-  const initialMapping = useInitialSnapshot({ type, pt, category, links, tFam, xFam });
-  const mappingChanged = snap({ type, pt, category, links, tFam, xFam }) !== initialMapping;
+  const initialMapping = useInitialSnapshot({ type, pt, category, links, tFam, xFam, units });
+  const mappingChanged = snap({ type, pt, category, links, tFam, xFam, units }) !== initialMapping;
   const clearError = (...keys) =>
     setErrors((e) => {
       if (!keys.some((k) => e[k])) return e;
@@ -49,18 +50,51 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
   const allFamilies = [...db.families, ...drafts];
   const familyNames = allFamilies.map((f) => f.name).sort((a, b) => a.localeCompare(b));
   const productsOf = (name) => productTextList((allFamilies.find((f) => f.name === name) || { products: [] }).products);
-  // One Mapping each for T/X and X-PREP. Type X-PREP is not scheduled and takes a single Product Family.
-  const txExists = db.mappings.some((x) => x.type === "T/X" && x.id !== editingId);
-  const xExists = db.mappings.some((x) => x.type === "X" && x.code === "PREP" && x.id !== editingId);
-  const single = type === "X-PREP";
+  // One Mapping each for T/X and every Special Code: an option already mapped shows "Mapped" and is disabled.
+  const taken = (key) => db.mappings.some((x) => typeCodeKey(x) === key && x.id !== editingId);
+  // A Special Code (X - PREP, O/T/X - ABC, O/T/X - DEF) is not scheduled and locks Activity Type to its Code. X - PREP takes a single Product Family;
+  // O/T/X Codes take Units, each with its own Products from the FIXED Product Family (like Type O links Product Families per Category).
+  const special = specialByKey(type);
+  const single = !!special && !special.units;
+  const unitsShown = !!special && special.units;
+  // A Unit sits in one Code at a time.
+  const unitOwner = (u) => db.mappings.find((mm) => (mm.units || []).includes(u) && mm.id !== editingId);
+  // Products come from FIXED only. A Product is taken when a Unit already holds it: its Fixed Product in Schedule (also for that Unit itself), another O/T/X Mapping,
+  // or another Unit in this form.
+  const fixedProducts = [...((db.families.find((f) => f.name === FIXED_FAMILY) || { products: [] }).products)].sort(byUnit);
+  const productOwner = (p, unit) => {
+    const fixedUnit = Object.keys(db.fixed).find((h) => (db.fixed[h] || []).some((x) => x.name === p));
+    if (fixedUnit) return fixedUnit;
+    const owners = [];
+    db.mappings.forEach((mm) => {
+      if (mm.id === editingId) return;
+      (mm.units || []).forEach((h) => ((mm.links || {})[h] || []).includes(p) && owners.push(h));
+    });
+    Object.keys(links).forEach((h) => (links[h] || []).includes(p) && owners.push(h));
+    return owners.find((h) => h !== unit) || null;
+  };
   function setType(v) {
     dirty();
     setErrors({});
     setTypeRaw(v);
-    if (!isCategoryType(v)) {
+    const sp = specialByKey(v);
+    if (sp) {
+      setPt(sp.code);
+      setCategory([]);
+      if (v !== type) {
+        setLinks({});
+        setUnits([]);
+        setXFam([]);
+      }
+    } else if (!isCategoryType(v)) {
       setPt("");
       setCategory([]);
       setLinks({});
+      setUnits([]);
+    } else if (specialByKey(type)) {
+      setPt("");
+      setLinks({});
+      setUnits([]);
     }
   }
   // Selected Categories that another Mapping already holds under this Activity Type (one Mapping per Activity Type + Category).
@@ -109,6 +143,19 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
     clearError("fam:T");
     setTFam(toggle(tFam, f));
   };
+  const toggleUnit = (u) => {
+    dirty();
+    clearError("units", `fam:${u}`);
+    if (units.includes(u)) {
+      setUnits(without(units, u));
+      const l = { ...links };
+      delete l[u];
+      setLinks(l);
+    } else {
+      setUnits([...units, u]);
+      setLinks({ ...links, [u]: [] });
+    }
+  };
   const toggleX = (f) => {
     dirty();
     clearError("fam:X");
@@ -148,16 +195,35 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
         activityType: pt,
         category: [...category],
         links: Object.fromEntries(category.map((p) => [p, [...(links[p] || [])]])),
+        units: null,
         families: used,
       };
     } else if (type === "T/X") {
       if (!tFam.length) errs["fam:T"] = "This is a required field.";
       used = [...tFam];
-      data = { type, code: null, activityType: null, category: null, links: null, families: used };
-    } else if (type === "X-PREP") {
+      data = { type, code: null, activityType: null, category: null, links: null, units: null, families: used };
+    } else if (special && special.units) {
+      if (!units.length) errs.units = "This is a required field.";
+      units
+        .filter((u) => !(links[u] || []).length)
+        .forEach((u) => {
+          errs[`fam:${u}`] = "This is a required field.";
+        });
+      const sorted = [...units].sort(byUnit);
+      used = []; // O/T/X Mappings hold Products from FIXED, not Product Families
+      data = {
+        type: special.type,
+        code: special.code,
+        activityType: special.code,
+        category: null,
+        units: sorted,
+        links: Object.fromEntries(sorted.map((u) => [u, [...(links[u] || [])]])),
+        families: [],
+      };
+    } else if (special) {
       if (!xFam.length) errs["fam:X"] = "This is a required field.";
       used = [...xFam];
-      data = { type: "X", code: "PREP", activityType: null, category: null, links: null, families: used };
+      data = { type: special.type, code: special.code, activityType: special.code, category: null, links: null, units: null, families: used };
     }
     setErrors(errs);
     if (Object.keys(errs).length) return;
@@ -237,7 +303,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
                 <p style={{ margin: draftLine || unmapped.length ? "16px 0 0" : 0 }}>
                   {m && typeCodeKey(m) === type
                     ? `Changing this Mapping will also remove ${moved.length === 1 ? "this Product Family" : "these Product Families"} from Schedule, which is set per Activity Type and Category.`
-                    : `Moving ${moved.length === 1 ? "this Product Family" : "these Product Families"} to Type - Code ${type} will also remove ${moved.length === 1 ? "it" : "them"} from Schedule.`}
+                    : `Moving ${moved.length === 1 ? "this Product Family" : "these Product Families"} to Type - Code ${typeCodeLabel(type)} will also remove ${moved.length === 1 ? "it" : "them"} from Schedule.`}
                 </p>
               ) : null}
               <div style={{ marginTop: draftLine || unmapped.length || moved.length ? 16 : 0 }}>
@@ -339,12 +405,36 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
       },
       createCtxValue: { forT: true },
     });
-  } else if (type === "X-PREP") {
+  } else if (unitsShown) {
+    // One Products field per selected Unit, like Type O per Category; its options are the Products of FIXED.
+    familySection = units.length ? (
+      units.map((u) => (
+        <Section key={u} legend={`Products mapped to ${u} Unit`}>
+          <PickerField
+            id={`fam-${u}`}
+            placeholder="Product"
+            options={fixedProducts}
+            value={links[u] || []}
+            onToggle={(p) => toggleCategoryFamily(u, p)}
+            onClear={() => {
+              dirty();
+              setLinks({ ...links, [u]: [] });
+            }}
+            getDisabled={(p) => !!productOwner(p, u)}
+            getSub={(p) => (productOwner(p, u) ? `Mapped to ${productOwner(p, u)} Unit` : "")}
+            error={errors[`fam:${u}`]}
+          />
+        </Section>
+      ))
+    ) : (
+      <div className="empty form-empty">Select all dropdown options to continue</div>
+    );
+  } else if (special) {
     familySection = familyPicker({
       key: "X",
       legend: "Product Family",
-      value: single ? xFam.slice(0, 1) : xFam,
-      isSingle: single,
+      value: xFam.slice(0, 1),
+      isSingle: true,
       onToggle: toggleX,
       onClear: () => {
         dirty();
@@ -373,9 +463,11 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
                 onClear={() => setType("")}
                 error={errors.type}
                 options={[
+                  { header: "Default" },
                   { value: "O", label: typeCodeLabel("O") },
-                  { value: "T/X", label: typeCodeLabel("T/X"), disabled: txExists, hint: txExists ? "Mapped" : "" },
-                  { value: "X-PREP", label: typeCodeLabel("X-PREP"), disabled: xExists, hint: xExists ? "Mapped" : "" },
+                  { value: "T/X", label: typeCodeLabel("T/X"), disabled: taken("T/X"), hint: taken("T/X") ? "Mapped" : "" },
+                  { header: "Special Codes" },
+                  ...SPECIAL_CODES.map((s) => ({ value: s.key, label: typeCodeLabel(s.key), disabled: taken(s.key), hint: taken(s.key) ? "Mapped" : "" })),
                 ]}
               />
             </div>
@@ -385,36 +477,60 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
                 id="f-activityType"
                 placeholder="Activity Type"
                 value={pt}
-                disabled={!isCategoryType(type)}
+                disabled={!isCategoryType(type)} // a Special Code fills it from the Code and locks it
+                clearable={!special}
                 onChange={changePt}
                 onClear={() => changePt("")}
                 error={errors.pt}
-                options={ACTIVITY_TYPES.map((p) => ({ value: p }))}
+                options={special ? [{ value: special.code }] : ACTIVITY_TYPES.map((p) => ({ value: p }))}
               />
             </div>
             <div className="field">
-              <FieldLabel htmlFor="f-category">Category</FieldLabel>
-              <PickerField
-                id="f-category"
-                placeholder="Category"
-                uppercase={false}
-                disabled={!isCategoryType(type) || !pt}
-                options={categoryOptions}
-                value={category}
-                onToggle={toggleCategory}
-                onClear={() => {
-                  dirty();
-                  setCategory([]);
-                  setLinks({});
-                }}
-                getDisabled={categoryUsed}
-                getSub={(p) => {
-                  if (!categoryUsed(p) || category.includes(p)) return "";
-                  const other = db.mappings.find((mm) => mm.activityType === pt && (mm.category || []).includes(p) && mm.id !== editingId);
-                  return other ? `Mapped to ${((other.links || {})[p] || []).join(", ")}` : "";
-                }}
-                error={errors.category}
-              />
+              <FieldLabel htmlFor={unitsShown ? "f-units" : "f-category"}>{unitsShown ? "Unit" : "Category"}</FieldLabel>
+              {unitsShown ? (
+                <PickerField
+                  key="units"
+                  id="f-units"
+                  placeholder="Unit"
+                  uppercase={false}
+                  options={UNITS}
+                  value={units}
+                  onToggle={toggleUnit}
+                  onClear={() => {
+                    dirty();
+                    setUnits([]);
+                  }}
+                  getDisabled={(u) => !!unitOwner(u)}
+                  getSub={(u) => {
+                    const other = unitOwner(u);
+                    return other && !units.includes(u) ? `Mapped to ${typeCodeLabel(typeCodeKey(other))}` : "";
+                  }}
+                  error={errors.units}
+                />
+              ) : (
+                <PickerField
+                  key="category"
+                  id="f-category"
+                  placeholder="Category"
+                  uppercase={false}
+                  disabled={!isCategoryType(type) || !pt}
+                  options={categoryOptions}
+                  value={category}
+                  onToggle={toggleCategory}
+                  onClear={() => {
+                    dirty();
+                    setCategory([]);
+                    setLinks({});
+                  }}
+                  getDisabled={categoryUsed}
+                  getSub={(p) => {
+                    if (!categoryUsed(p) || category.includes(p)) return "";
+                    const other = db.mappings.find((mm) => mm.activityType === pt && (mm.category || []).includes(p) && mm.id !== editingId);
+                    return other ? `Mapped to ${((other.links || {})[p] || []).join(", ")}` : "";
+                  }}
+                  error={errors.category}
+                />
+              )}
             </div>
           </div>
         </Section>

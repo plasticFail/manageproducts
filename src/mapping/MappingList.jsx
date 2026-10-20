@@ -17,7 +17,7 @@ export function MappingList({ search, filter, setFilter, onCreate, onEdit }) {
     const term = search.trim().toLowerCase();
     const visible = term
       ? byType.filter((m) =>
-          [typeCodeKey(m), typeCodeLabel(typeCodeKey(m)), m.activityType, ...(m.category || []), ...m.families].filter(Boolean).join(" ").toLowerCase().includes(term),
+          [typeCodeKey(m), typeCodeLabel(typeCodeKey(m)), m.activityType, ...(m.category || []), ...(m.units || []), ...(m.units ? Object.values(m.links || {}).flat() : []), ...m.families].filter(Boolean).join(" ").toLowerCase().includes(term),
         )
       : byType;
     return sortRows(visible);

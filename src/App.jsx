@@ -303,10 +303,10 @@ function Workspace({ persona, db, setDb }) {
     </>
   );
 }
-// Persona tabs: the same data seen by three kinds of people. Switching closes the window; the data stays.
+// Persona tabs: the same data seen by two kinds of people. Switching closes the window; the data stays.
 export default function App() {
   const [preset, setPreset] = useState(
-    () => ({ empty: "empty", blank: "blank" })[new URLSearchParams(location.search).get("data")] || "full",
+    () => ({ empty: "empty", blank: "blank", faf: "faf" })[new URLSearchParams(location.search).get("data")] || "full",
   );
   const [db, setDb] = useState(() => initialDb(preset));
   const [personaId, setPersonaId] = useState("A");

@@ -14,7 +14,9 @@ export function useDeleteMapping() {
     const afterDelete = (d) => ({ ...d, mappings: d.mappings.filter((x) => x.id !== id), changedMappings: without(d.changedMappings, id) });
     const { removed } = pruneSchedule(afterDelete(db));
     // The title names what is deleted.
-    const title = m.type === "O" ? "Delete Type O Mapping" : m.type === "X" ? `Delete X - ${m.code} Mapping` : "Delete Type T/X Mapping";
+    // A Special Code (X - PREP, O/T/X - ABC, ...) is never scheduled and its Units live only in the Mapping, so its dialog has no Schedule line.
+    const isCode = !!m.code;
+    const title = m.type === "O" ? "Delete Type O Mapping" : isCode ? `Delete ${m.type} - ${m.code} Mapping` : "Delete Type T/X Mapping";
     const ok = await confirm(
       <>
         {removed.length ? (
@@ -23,12 +25,11 @@ export function useDeleteMapping() {
             <DeleteMappingPreview db={db} m={m} removed={removed} />
           </>
         ) : (
-          // X - PREP is never scheduled, so it has no Schedule line.
-          m.type !== "X" && <p style={{ margin: 0 }}>Mapping is not currently in use in Schedule. Deleting this will not affect Schedule.</p>
+          !isCode && <p style={{ margin: 0 }}>Mapping is not currently in use in Schedule. Deleting this will not affect Schedule.</p>
         )}
         <UndoNote />
       </>,
-      { title, confirmLabel: "Delete", destructive: true, wide: m.type !== "X" },
+      { title, confirmLabel: "Delete", destructive: true, wide: !isCode },
     );
     if (!ok) return false;
     setDb((d) => pruneSchedule(afterDelete(d)).db);

@@ -22,7 +22,7 @@ export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = fals
   cols.push(
     { colId: "type", headerName: "Type - Code", width: 240, valueGetter: (p) => typeCodeLabel(typeCodeKey(p.data)) },
     { field: "activityType", headerName: "Activity Type", width: 160, cellRenderer: (p) => p.value || <Dash /> },
-    { colId: "families", headerName: "Product Family", flex: 1, minWidth: 200, cellRenderer: (p) => <FamilyCell db={db} m={p.data} /> },
+    { colId: "families", headerName: "Mapped to", flex: 1, minWidth: 200, cellRenderer: (p) => <FamilyCell db={db} m={p.data} /> },
   );
   if (withMeta && !readOnly) {
     cols.push({

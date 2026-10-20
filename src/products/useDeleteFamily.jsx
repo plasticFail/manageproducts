@@ -1,5 +1,5 @@
 import { DeleteFamilyPreview, UndoNote } from "../components/previews";
-import { isCategoryType, without } from "../lib/utils";
+import { hasGroups, without } from "../lib/utils";
 import { pruneSchedule, scheduleUsage } from "../lib/domain";
 import { useDb, useUi } from "../components/common";
 
@@ -17,7 +17,7 @@ export function useDeleteFamily() {
       // Mappings left with no Product Family are deleted as a whole row.
       const emptiedCount = db.mappings.filter((m) => m.families.length === 1 && m.families[0] === name).length;
       const mp = db.mappings.find((m) => m.families.includes(name));
-      const mapName = mp ? (mp.type === "O" ? "Type O Mapping" : mp.type === "X" ? `X - ${mp.code} Mapping` : "Type T/X Mapping") : "Mapping";
+      const mapName = mp ? (mp.type === "O" ? "Type O Mapping" : mp.code ? `${mp.type} - ${mp.code} Mapping` : "Type T/X Mapping") : "Mapping";
       const where = inMapping && scheduled ? `${mapName} and Schedule` : inMapping ? mapName : "Schedule";
       body = (
         <>
@@ -44,13 +44,15 @@ export function useDeleteFamily() {
     setDb((d) => {
       let mappings = d.mappings.map((m) => {
         if (!m.families.includes(name)) return m;
-        if (!isCategoryType(m.type)) return { ...m, families: without(m.families, name) };
+        if (!hasGroups(m)) return { ...m, families: without(m.families, name) };
         const linked = Object.fromEntries(Object.entries(m.links || {}).map(([p, arr]) => [p, without(arr, name)]));
+        // A Category left with no Product Family goes too.
         const category = (m.category || []).filter((p) => (linked[p] || []).length > 0);
         return { ...m, category, links: Object.fromEntries(category.map((p) => [p, linked[p]])), families: without(m.families, name) };
       });
-      const emptied = mappings.filter((m) => m.families.length === 0).map((m) => m.id);
-      mappings = mappings.filter((m) => m.families.length > 0);
+      // O/T/X Mappings hold Products from FIXED, not Product Families, so they never count as emptied.
+      const emptied = mappings.filter((m) => m.families.length === 0 && !m.units).map((m) => m.id);
+      mappings = mappings.filter((m) => !emptied.includes(m.id));
       return pruneSchedule({
         ...d,
         mappings,

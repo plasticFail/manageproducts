@@ -5,6 +5,7 @@ import {
   FormControl,
   FormHelperText,
   InputAdornment,
+  ListSubheader,
   MenuItem,
   Select,
   TextField,
@@ -228,7 +229,7 @@ export function SelectField({
         id={id}
         displayEmpty
         value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => e.target.value !== undefined && onChange(e.target.value)}
         renderValue={(v) =>
           v !== "" && v != null ? ((options.find((o) => o.value === v) || {}).label ?? v) : <span className="muted">{placeholder}</span>
         }
@@ -248,7 +249,13 @@ export function SelectField({
         }
       >
         {options.length ? (
-          options.map((o) => (
+          options.map((o) =>
+            // { header } entries are group headings, not options.
+            o.header ? (
+              <ListSubheader key={`group-${o.header}`} className="menu-group">
+                {o.header}
+              </ListSubheader>
+            ) : (
             <MenuItem key={o.value} value={o.value} disabled={!!o.disabled}>
               {o.hint ? (
                 <div className="menu-opt">
@@ -259,7 +266,8 @@ export function SelectField({
                 (o.label ?? o.value)
               )}
             </MenuItem>
-          ))
+            ),
+          )
         ) : (
           <MenuItem value="" disabled>
             No options

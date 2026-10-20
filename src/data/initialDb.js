@@ -58,7 +58,8 @@ const SEED_FAMILIES = [
   ["Mall", ["Voucher", "Kiosk", "Trolley"], "2026-09-30T13:40:00"],
   ["Zoo", ["Ticket", "Plush", "Keychain"], "2026-10-01T09:30:00"],
   // One Product per Unit for the read-only Fixed column; names are unique across all Product Families and Products.
-  ["Fixed", UNITS.map((_, i) => `Fixed${i + 1}`), "2026-09-27T09:00:00"],
+  // SAVE1, SAVE2, SAVE5 and SAVE6 are extras beyond the one FIXED Product per Unit; the O/T/X Mappings give them to Units.
+  ["Fixed", [...UNITS.map((_, i) => `Fixed${i + 1}`), "Save1", "Save2", "Save5", "Save6"], "2026-09-27T09:00:00"],
 ];
 const TX_FAMILIES = ["CARS", "BEAUTY", "BOOKS", "CLOTHES", "HARDWARE", "PAINT", "DECOR", "MUSIC", "MACHINES", "TOYS", "FOOTWEAR"];
 const UNIT_ORDER = (a, b) => a.localeCompare(b, undefined, { numeric: true });
@@ -75,10 +76,16 @@ const ACTIVITY_PLAN = [
 export const DATA_PRESETS = [
   { value: "full", label: "Dummy data" },
   { value: "empty", label: "No Mapping / Schedule" },
+  { value: "faf", label: "FA · F Schedule cleared" },
 ];
 export function initialDb(preset = "full") {
   // "blank" (URL ?data=blank only): no Product Families either, for testing the empty Product Family tab.
   if (preset === "blank") return { ...initialDb("empty"), families: [] };
+  // "faf" = dummy data with the Schedule of the FA · F Activity Type row cleared (every month empty).
+  if (preset === "faf") {
+    const d = initialDb("full");
+    return { ...d, activitySchedules: d.activitySchedules.filter((x) => !(x.activityType === "FA" && x.category === "F")) };
+  }
   if (preset === "empty") {
     const d = initialDb("full");
     return { ...d, mappings: [], nextMappingId: 1, schedules: [], activitySchedules: [], fixed: {} };
@@ -135,15 +142,41 @@ export function initialDb(preset = "full") {
         id: 5,
         type: "X",
         code: "PREP",
-        activityType: null,
+        activityType: "PREP",
         category: null,
         links: null,
         families: ["FOOD"],
         createdAt: "2026-09-08T09:00:00",
         updatedAt: "2026-09-08T09:00:00",
       },
+      // O/T/X Codes: not scheduled; each Unit links Products from the FIXED Product Family (the SAVE extras; the FIXED1..7 per Unit are left as they are).
+      // Created first, so they sit below the other rows (newest first).
+      {
+        id: 6,
+        type: "O/T/X",
+        code: "ABC",
+        activityType: "ABC",
+        category: null,
+        units: ["111", "145"],
+        links: { "111": ["SAVE1"], "145": ["SAVE2"] },
+        families: [],
+        createdAt: "2026-08-28T09:00:00",
+        updatedAt: "2026-08-28T09:00:00",
+      },
+      {
+        id: 7,
+        type: "O/T/X",
+        code: "DEF",
+        activityType: "DEF",
+        category: null,
+        units: ["112", "123"],
+        links: { "112": ["SAVE5"], "123": ["SAVE6"] },
+        families: [],
+        createdAt: "2026-08-29T09:00:00",
+        updatedAt: "2026-08-29T09:00:00",
+      },
     ],
-    nextMappingId: 6,
+    nextMappingId: 8,
     // Unit schedule (Type T/X): 5 Units carry Product Families, Jul to Dec 2026. A Unit never repeats a Product Family across its months, and in any month
     // the five Units hold different ones (the six families rotate by Unit). key = "YYYY-M" (0-based month). Some months are left empty on purpose.
     schedules: SCHEDULED_UNITS.flatMap((unit, i) =>

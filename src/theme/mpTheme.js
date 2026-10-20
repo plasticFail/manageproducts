@@ -860,6 +860,8 @@ const css = `
   .plain-x .chip-x{ font-size:14px; }
   .plain-x:hover{ color:${t.text}; }
   .plain-x:focus-visible{ outline:2px solid ${t.accent}; border-radius:2px; }
+  .MuiListSubheader-root.menu-group{ background:transparent; color:var(--muted); font-size:12px; line-height:16px; letter-spacing:0.4px; padding:12px 16px 4px; } /* Type - Code group headings (Default, Special Codes) */
+  .MuiListSubheader-root.menu-group:not(:first-of-type){ margin-top:4px; border-top:1px solid ${t.borderSoft}; }
   .menu-opt{ display:flex; flex-direction:column; }
   .menu-hint{ font-size:11px; color:var(--muted); margin-top:4px; } /* why an option is unavailable */
   /* Schedule tab: month navigator (above strip + table) */
