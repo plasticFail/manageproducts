@@ -617,6 +617,8 @@ const css = `
   .ag-row.ag-row-odd{ background-color:${t.gridRowEven}; }
   .ag-row.ag-row-odd.ag-row-hover{ background-color:${t.gridRowEvenHover}; }
   .ag-row.ag-row-selected, .ag-row.ag-row-selected.ag-row-hover{ background-color:${t.gridRowSelected}; }
+  /* Table scrollbars are hidden (wheel, trackpad and keyboard still scroll) */
+  .ag-root-wrapper *{ scrollbar-width:none; -ms-overflow-style:none; } .ag-root-wrapper *::-webkit-scrollbar{ display:none; width:0; height:0; }
   .ag-row{ cursor:pointer; }
   .ag-row.row-locked{ cursor:default; } /* FIXED Product Family: no edit, no delete */
   .ag-row .icon-action.Mui-disabled{ pointer-events:auto; cursor:default; } /* a disabled action keeps the default cursor, not the row's pointer */
