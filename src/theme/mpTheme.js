@@ -617,6 +617,8 @@ const css = `
   .ag-row.ag-row-odd{ background-color:${t.gridRowEven}; }
   .ag-row.ag-row-odd.ag-row-hover{ background-color:${t.gridRowEvenHover}; }
   .ag-row.ag-row-selected, .ag-row.ag-row-selected.ag-row-hover{ background-color:${t.gridRowSelected}; }
+  /* Table scrollbars are hidden (wheel, trackpad and keyboard still scroll) */
+  .ag-root-wrapper *{ scrollbar-width:none; -ms-overflow-style:none; } .ag-root-wrapper *::-webkit-scrollbar{ display:none; width:0; height:0; }
   .ag-row{ cursor:pointer; }
   .ag-row.row-locked{ cursor:default; } /* FIXED Product Family: no edit, no delete */
   .ag-row .icon-action.Mui-disabled{ pointer-events:auto; cursor:default; } /* a disabled action keeps the default cursor, not the row's pointer */
@@ -671,6 +673,8 @@ const css = `
   .muted{ color:var(--muted); }
   .error{ color:var(--danger); font-size:12px; margin-top:6px; }
 
+  .family-row{ display:flex; align-items:flex-start; gap:4px; } .family-row.chips .cat-label{ line-height:26px; } .family-row .family-tags-wrap{ flex:1; min-width:0; }
+  .ag-cell .family-row .cat-label{ flex:none; white-space:nowrap; } .ag-cell .family-row .cat-label-unit{ width:64px; } .ag-cell .family-row .cat-label-category{ width:20px; } /* Unit labels share one width and Category labels share another, so each kind lines up with itself */
   .ag-cell .table-chip{ font-size:14px; } .ag-cell .table-chip .MuiChip-label{ line-height:18px; } .ag-cell .cat-label{ font-size:14px; line-height:18px; } /* table chips and Category labels: 14px / 18px */
   .table-chip{ background:${t.tableChipBg} !important; border-color:${t.tableChipBg} !important; color:${t.tableChipInk} !important; }
   .multi-chip.MuiChip-root{ background:rgba(255,255,255,0.16); border-color:transparent; color:${t.text}; }
@@ -860,7 +864,7 @@ const css = `
   .plain-x .chip-x{ font-size:14px; }
   .plain-x:hover{ color:${t.text}; }
   .plain-x:focus-visible{ outline:2px solid ${t.accent}; border-radius:2px; }
-  .MuiListSubheader-root.menu-group{ background:transparent; color:var(--muted); font-size:12px; line-height:16px; letter-spacing:0.4px; padding:12px 16px 4px; } /* Type - Code group headings (Default, Special Codes) */
+  .MuiListSubheader-root.menu-group{ background:transparent; color:var(--muted); font-size:12px; line-height:16px; letter-spacing:0.4px; padding:12px 16px 4px; } /* Type - Code group headings (Default, Specific Codes) */
   .MuiListSubheader-root.menu-group:not(:first-of-type){ margin-top:4px; border-top:1px solid ${t.borderSoft}; }
   .menu-opt{ display:flex; flex-direction:column; }
   .menu-hint{ font-size:11px; color:var(--muted); margin-top:4px; } /* why an option is unavailable */

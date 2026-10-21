@@ -42,6 +42,7 @@ export function DataGrid({ className = "grid-wrap", autoHeight = false, style, .
         theme={gridTheme}
         defaultColDef={baseColDef}
         suppressCellFocus
+        scrollbarWidth={0} // scrollbars are hidden (see mpTheme.js): the grid reserves no space for them
         suppressRowHoverHighlight={false}
         domLayout={autoHeight ? "autoHeight" : "normal"}
         containerStyle={autoHeight ? void 0 : { height: "100%" }}

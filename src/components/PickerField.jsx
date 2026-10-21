@@ -158,10 +158,13 @@ export function PickerField({
               "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": { borderWidth: "0 0 2px 0", borderColor: "var(--accent)" },
               "& .count-chip": { width: 32, height: 32, marginLeft: "auto", marginRight: "4px", fontSize: 14, borderRadius: "4px" },
               "& .msf-tags": { marginRight: "4px" },
-              // Typing shows the Clear X (no counter); otherwise the counter shows the number of chips
+              // Focus shows the Clear X (no counter); otherwise the counter shows the number of chips
+              // While the field has focus the Clear X replaces the counter (also after an option is picked); once focus leaves, the counter returns
+              "&:focus-within .typing-x": { display: "inline-flex" },
+              "&:focus-within .typing-x + .count-chip": { display: "none" },
               "&.typing .count-chip": { display: "none" },
               "& .MuiAutocomplete-clearIndicator": { display: "none" },
-              "& .typing-x": { width: 32, height: 32, marginLeft: "auto", marginRight: "4px", display: "inline-flex", alignItems: "center", justifyContent: "center", padding: 0, border: 0, background: "transparent", color: "inherit", cursor: "pointer", flexShrink: 0 },
+              "& .typing-x": { width: 32, height: 32, marginLeft: "auto", marginRight: "4px", display: "none", alignItems: "center", justifyContent: "center", padding: 0, border: 0, background: "transparent", color: "inherit", cursor: "pointer", flexShrink: 0 },
               ...(value.length ? { "& .MuiAutocomplete-input": { width: "0 !important", minWidth: "0 !important", flex: "0 0 0", padding: "0 !important" }, "&:focus-within .MuiAutocomplete-input": { width: "24px !important", minWidth: "24px !important", flex: "0 0 24px", padding: "0 !important" } } : {}),
             }
           : stack
@@ -185,8 +188,8 @@ export function PickerField({
             endAdornment: (
               <>
                 {inlineError && error ? <ErrorFlag message={error} /> : null}
-                {swapCount && inputValue ? (
-                  <button type="button" className="typing-x" aria-label="Clear typed text" onMouseDown={(e) => e.preventDefault()} onClick={() => setInputValue("")}>
+                {swapCount && (inputValue || value.length > 0) ? (
+                  <button type="button" className="typing-x" aria-label="Clear" onMouseDown={(e) => e.preventDefault()} onClick={() => (inputValue ? setInputValue("") : onClear())}>
                     <Close fontSize="small" />
                   </button>
                 ) : null}

@@ -50,9 +50,9 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
   const allFamilies = [...db.families, ...drafts];
   const familyNames = allFamilies.map((f) => f.name).sort((a, b) => a.localeCompare(b));
   const productsOf = (name) => productTextList((allFamilies.find((f) => f.name === name) || { products: [] }).products);
-  // One Mapping each for T/X and every Special Code: an option already mapped shows "Mapped" and is disabled.
+  // One Mapping each for T/X and every Specific Code: an option already mapped shows "Mapped" and is disabled.
   const taken = (key) => db.mappings.some((x) => typeCodeKey(x) === key && x.id !== editingId);
-  // A Special Code (X - PREP, O/T/X - ABC, O/T/X - DEF) is not scheduled and locks Activity Type to its Code. X - PREP takes a single Product Family;
+  // A Specific Code (X - PREP, O/T/X - ABC, O/T/X - DEF) is not scheduled and locks Activity Type to its Code. X - PREP takes a single Product Family;
   // O/T/X Codes take Units, each with its own Products from the FIXED Product Family (like Type O links Product Families per Category).
   const special = specialByKey(type);
   const single = !!special && !special.units;
@@ -62,17 +62,20 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
   // Products come from FIXED only. A Product is taken when a Unit already holds it: its Fixed Product in Schedule (also for that Unit itself), another O/T/X Mapping,
   // or another Unit in this form.
   const fixedProducts = [...((db.families.find((f) => f.name === FIXED_FAMILY) || { products: [] }).products)].sort(byUnit);
+  // Who holds a Product: { fixed: Unit } when it is that Unit's Fixed Product in Schedule, or { code, unit } when an O/T/X Mapping (or this form) maps it to a Unit.
   const productOwner = (p, unit) => {
     const fixedUnit = Object.keys(db.fixed).find((h) => (db.fixed[h] || []).some((x) => x.name === p));
-    if (fixedUnit) return fixedUnit;
+    if (fixedUnit) return { fixed: fixedUnit };
     const owners = [];
     db.mappings.forEach((mm) => {
       if (mm.id === editingId) return;
-      (mm.units || []).forEach((h) => ((mm.links || {})[h] || []).includes(p) && owners.push(h));
+      (mm.units || []).forEach((h) => ((mm.links || {})[h] || []).includes(p) && owners.push({ code: typeCodeKey(mm), unit: h }));
     });
-    Object.keys(links).forEach((h) => (links[h] || []).includes(p) && owners.push(h));
-    return owners.find((h) => h !== unit) || null;
+    Object.keys(links).forEach((h) => (links[h] || []).includes(p) && owners.push({ code: type, unit: h }));
+    return owners.find((o) => o.unit !== unit) || null;
   };
+  // Dropdown line under a taken Product: a Fixed Product is named as such; an O/T/X mapping names its Type - Code, like the Unit options do.
+  const productOwnerLabel = (o) => (o.fixed ? `Fixed Product for ${o.fixed} Unit` : `Mapped to ${typeCodeLabel(o.code)} · ${o.unit} Unit`);
   function setType(v) {
     dirty();
     setErrors({});
@@ -421,7 +424,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
               setLinks({ ...links, [u]: [] });
             }}
             getDisabled={(p) => !!productOwner(p, u)}
-            getSub={(p) => (productOwner(p, u) ? `Mapped to ${productOwner(p, u)} Unit` : "")}
+            getSub={(p) => (productOwner(p, u) ? productOwnerLabel(productOwner(p, u)) : "")}
             error={errors[`fam:${u}`]}
           />
         </Section>
@@ -466,8 +469,8 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
                   { header: "Default" },
                   { value: "O", label: typeCodeLabel("O") },
                   { value: "T/X", label: typeCodeLabel("T/X"), disabled: taken("T/X"), hint: taken("T/X") ? "Mapped" : "" },
-                  { header: "Special Codes" },
-                  ...SPECIAL_CODES.map((s) => ({ value: s.key, label: typeCodeLabel(s.key), disabled: taken(s.key), hint: taken(s.key) ? "Mapped" : "" })),
+                  { header: "Specific Codes" },
+                  ...[...SPECIAL_CODES].sort((a, b) => typeCodeLabel(a.key).localeCompare(typeCodeLabel(b.key))).map((s) => ({ value: s.key, label: typeCodeLabel(s.key), disabled: taken(s.key), hint: taken(s.key) ? "Mapped" : "" })),
                 ]}
               />
             </div>
@@ -477,7 +480,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
                 id="f-activityType"
                 placeholder="Activity Type"
                 value={pt}
-                disabled={!isCategoryType(type)} // a Special Code fills it from the Code and locks it
+                disabled={!isCategoryType(type)} // a Specific Code fills it from the Code and locks it
                 clearable={!special}
                 onChange={changePt}
                 onClear={() => changePt("")}
@@ -547,6 +550,7 @@ export function MappingForm({ editingId, prefill, fromTab, dirtyRef, onDone, onD
           <Button
             variant="dangerOutline"
             className="footer-delete"
+            disabled={!!m.units} // O/T/X Codes (ABC, DEF) are system Mappings: they can be edited but not deleted
             onClick={async () => {
               if (await deleteMapping(editingId)) {
                 dirtyRef.current = false;

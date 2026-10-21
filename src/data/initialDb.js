@@ -58,9 +58,25 @@ const SEED_FAMILIES = [
   ["Mall", ["Voucher", "Kiosk", "Trolley"], "2026-09-30T13:40:00"],
   ["Zoo", ["Ticket", "Plush", "Keychain"], "2026-10-01T09:30:00"],
   // One Product per Unit for the read-only Fixed column; names are unique across all Product Families and Products.
-  // SAVE1, SAVE2, SAVE5 and SAVE6 are extras beyond the one FIXED Product per Unit; the O/T/X Mappings give them to Units.
-  ["Fixed", [...UNITS.map((_, i) => `Fixed${i + 1}`), "Save1", "Save2", "Save5", "Save6"], "2026-09-27T09:00:00"],
+  // SAVE1, SAVE2, SAVE5, SAVE6 and SAVE7 are extras beyond the one FIXED Product per Unit; the O/T/X Mappings give them to Units.
+  ["Fixed", [...UNITS.map((_, i) => `Fixed${i + 1}`), "Save1", "Save2", "Save5", "Save6", "Save7"], "2026-09-27T09:00:00"],
 ];
+const FAMILY_UPDATED = "2026-09-08T09:00:00";
+const FAMILY_CREATED = {
+  FIXED: "2026-09-08T09:00:00",
+  HARDWARE: "2026-09-08T08:30:00",
+  BEAUTY: "2026-09-05T09:00:00",
+  FRUITS: "2026-09-05T08:30:00",
+  BOOKS: "2026-09-04T09:00:00",
+  FOOD: "2026-09-04T08:30:00",
+  CARS: "2026-09-03T09:00:00",
+  PAINT: "2026-09-03T08:30:00",
+  DECOR: "2026-09-01T09:00:00",
+};
+// The other Product Families keep their old relative order (by their original Created date), all before 01 Sep.
+const OTHER_FAMILIES = SEED_FAMILIES.filter(([n]) => !FAMILY_CREATED[up(n)])
+  .sort((a, b) => a[2].localeCompare(b[2]))
+  .map(([n]) => up(n));
 const TX_FAMILIES = ["CARS", "BEAUTY", "BOOKS", "CLOTHES", "HARDWARE", "PAINT", "DECOR", "MUSIC", "MACHINES", "TOYS", "FOOTWEAR"];
 const UNIT_ORDER = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 const SCHEDULED_UNITS = ["123", "140", "142", "112", "134"];
@@ -72,15 +88,15 @@ const ACTIVITY_PLAN = [
   ["SW", "T", [["WELLNESS"], ["ART KITS", "BABY"], ["WELLNESS"], ["BABY"], ["ART KITS", "WELLNESS"], ["BABY"]]],
 ];
 // Data preset, chosen on the launcher page before the modal opens:
-// "full"  = dummy data everywhere; "empty" = Product Families only, with no Mappings and nothing scheduled.
+// "full"  = dummy data everywhere; "empty" = system initial state: Product Families plus the two system Mappings (O/T/X - ABC and DEF), nothing scheduled.
 export const DATA_PRESETS = [
   { value: "full", label: "Dummy data" },
-  { value: "empty", label: "No Mapping / Schedule" },
+  { value: "empty", label: "System initial state" },
   { value: "faf", label: "FA · F Schedule cleared" },
 ];
 export function initialDb(preset = "full") {
-  // "blank" (URL ?data=blank only): no Product Families either, for testing the empty Product Family tab.
-  if (preset === "blank") return { ...initialDb("empty"), families: [] };
+  // "blank" (URL ?data=blank only): no Product Families and no Mappings either, for testing the empty Product Family and Mapping tabs.
+  if (preset === "blank") return { ...initialDb("empty"), families: [], mappings: [], nextMappingId: 1 };
   // "faf" = dummy data with the Schedule of the FA · F Activity Type row cleared (every month empty).
   if (preset === "faf") {
     const d = initialDb("full");
@@ -88,10 +104,15 @@ export function initialDb(preset = "full") {
   }
   if (preset === "empty") {
     const d = initialDb("full");
-    return { ...d, mappings: [], nextMappingId: 1, schedules: [], activitySchedules: [], fixed: {} };
+    return { ...d, mappings: d.mappings.filter((m) => m.type === "O/T/X"), schedules: [], activitySchedules: [], fixed: {} };
   }
   return {
-    families: SEED_FAMILIES.map(([name, products, at]) => ({ name: up(name), products: products.map(up), createdAt: at, updatedAt: at })),
+    // Product Family dates: the nine below sit first in the list (newest Created first), every other Product Family is older (spread over August in its original order). All were last updated 08 Sep 26 09:00.
+    families: SEED_FAMILIES.map(([name, products]) => {
+      const key = up(name);
+      const createdAt = FAMILY_CREATED[key] || `2026-08-${String(12 + OTHER_FAMILIES.indexOf(key)).padStart(2, "0")}T10:00:00`;
+      return { name: key, products: products.map(up), createdAt, updatedAt: FAMILY_UPDATED };
+    }),
     // A Type O Mapping keeps its own Product Family links per Category (links), so the same Category can sit in several Activity Types independently.
     mappings: [
       {
@@ -170,7 +191,7 @@ export function initialDb(preset = "full") {
         activityType: "DEF",
         category: null,
         units: ["112", "123"],
-        links: { "112": ["SAVE5"], "123": ["SAVE6"] },
+        links: { "112": ["SAVE5", "SAVE7"], "123": ["SAVE6"] },
         families: [],
         createdAt: "2026-08-29T09:00:00",
         updatedAt: "2026-08-29T09:00:00",

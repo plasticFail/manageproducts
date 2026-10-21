@@ -15,7 +15,7 @@ export const withAdded = (arr, v) => (arr.includes(v) ? arr : [...arr, v]);
 export const toggle = (arr, v) => (arr.includes(v) ? without(arr, v) : [...arr, v]);
 // Type - Code field. Stored as type "O" | "T/X" | "X" | "O/T/X" plus code (null, PREP, ABC or DEF). The field's key is "O", "T/X" or `${type}-${code}`.
 // Default options (O, T/X) cover every Code that has no Mapping of its own; T/X means Type T and X share the Product Families.
-// Special Codes get one option and one Mapping each: not scheduled, one Product Family, Activity Type filled from the Code and locked.
+// Specific Codes get one option and one Mapping each: not scheduled, one Product Family, Activity Type filled from the Code and locked.
 // O/T/X Codes (ABC, DEF) link Product Families per Unit (like Type O does per Category); a Unit sits in one Code at a time. X - PREP takes one Product Family and no Units.
 // A future Code is one more row here.
 export const SPECIAL_CODES = [

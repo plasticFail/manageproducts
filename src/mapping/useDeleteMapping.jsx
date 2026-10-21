@@ -14,7 +14,7 @@ export function useDeleteMapping() {
     const afterDelete = (d) => ({ ...d, mappings: d.mappings.filter((x) => x.id !== id), changedMappings: without(d.changedMappings, id) });
     const { removed } = pruneSchedule(afterDelete(db));
     // The title names what is deleted.
-    // A Special Code (X - PREP, O/T/X - ABC, ...) is never scheduled and its Units live only in the Mapping, so its dialog has no Schedule line.
+    // A Specific Code (X - PREP, O/T/X - ABC, ...) is never scheduled and its Units live only in the Mapping, so its dialog has no Schedule line.
     const isCode = !!m.code;
     const title = m.type === "O" ? "Delete Type O Mapping" : isCode ? `Delete ${m.type} - ${m.code} Mapping` : "Delete Type T/X Mapping";
     const ok = await confirm(

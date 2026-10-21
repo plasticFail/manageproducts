@@ -36,7 +36,7 @@ async def main():
             await pg.get_by_role("tab", name="Mapping", exact=True).click(); await pg.wait_for_timeout(700)
             await pg.screenshot(path=f"{SHOT}/persona_{pid}_mapping.png")
             await close_modal(pg)
-        # Linked data: A deletes the first Product Family; C sees one family fewer.
+        # Linked data: A deletes the second Product Family (the first is FIXED, which can't be deleted); C sees one family fewer.
         await pg.get_by_role("tab", name="Persona B").click(); await open_modal(pg)
         await pg.get_by_role("tab", name="Product Family").click(); await pg.wait_for_timeout(800)
         n_c = await pg.locator(".ag-center-cols-container .ag-row").count()
@@ -44,8 +44,8 @@ async def main():
         await close_modal(pg)
         await pg.get_by_role("tab", name="Persona A").click(); await open_modal(pg)
         await pg.get_by_role("tab", name="Product Family").click(); await pg.wait_for_timeout(800)
-        name = await pg.locator(".ag-center-cols-container .ag-row").first.locator("[col-id=name]").inner_text()
-        await pg.locator(".ag-pinned-right-cols-container .ag-row, .ag-center-cols-container .ag-row").first.locator('button[title=Delete]').click()
+        name = await pg.locator(".ag-center-cols-container .ag-row").nth(1).locator("[col-id=name]").inner_text()
+        await pg.locator(".ag-pinned-right-cols-container .ag-row, .ag-center-cols-container .ag-row").nth(1).locator('button[title=Delete]').click()
         await pg.wait_for_timeout(300)
         await pg.get_by_role("button", name="Delete", exact=True).last.click(); await pg.wait_for_timeout(500)
         await close_modal(pg)

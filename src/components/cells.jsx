@@ -24,8 +24,8 @@ export function FamilyCell({ db, m }) {
     return (
       <div className="family-cats">
         {categoryWithFamilies(db, m).map((u) => (
-          <div key={u} className="family-tags-wrap" style={{ alignItems: "center" }}>
-            <span className="muted cat-label">{u} Unit:</span>
+          <div key={u} className="family-row">
+            <span className="muted cat-label cat-label-unit">{u} Unit:</span>
             <span className="unit-products" style={{ fontSize: 14, lineHeight: "18px" }}>
               {m.links[u].join(", ")}
             </span>
@@ -37,13 +37,15 @@ export function FamilyCell({ db, m }) {
     return (
       <div className="family-cats">
         {categoryWithFamilies(db, m).map((p) => (
-          <div key={p} className="family-tags-wrap" style={{ alignItems: "center" }}>
-            <span className="muted cat-label">
+          <div key={p} className="family-row chips">
+            <span className="muted cat-label cat-label-category">
               {p}:
             </span>
-            {m.links[p].map((f) => (
-              <FamilyTag key={f} name={f} />
-            ))}
+            <div className="family-tags-wrap">
+              {m.links[p].map((f) => (
+                <FamilyTag key={f} name={f} />
+              ))}
+            </div>
           </div>
         ))}
       </div>

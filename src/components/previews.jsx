@@ -34,7 +34,8 @@ export function mappingColumns(db, { withMeta, onEdit, onDelete, readOnly = fals
           <IconButton className="icon-action" title="Edit" onClick={() => onEdit(p.data.id)}>
             <EditOutlined />
           </IconButton>
-          <IconButton className="icon-action" title="Delete" onClick={() => onDelete(p.data.id)}>
+          {/* O/T/X Codes (ABC, DEF) are system Mappings: they can be edited but not deleted */}
+          <IconButton className="icon-action" title={p.data.units ? undefined : "Delete"} disabled={!!p.data.units} onClick={() => onDelete(p.data.id)}>
             <DeleteOutlined />
           </IconButton>
         </div>
